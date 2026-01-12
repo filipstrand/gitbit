@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Generalize commit error handling UI (red border/background for any failure).
+- Improved commit error copy-to-clipboard functionality.
+- Removed internal debug logs and specialized linter logic for a cleaner public release.
+
 ## 0.1.0
 
 - Initial public release.
