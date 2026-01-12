@@ -1,0 +1,11 @@
+.gitignore
+.cursor/
+.vscode/
+.github/
+tsconfig.json
+src/
+scripts/
+package-lock.json
+node_modules/
+media/logo.svg
+*.vsix

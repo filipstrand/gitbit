@@ -1,1 +1,57 @@
-# gitkit
+# GitBit
+
+<p align="center">
+  <img src="media/logo.png" width="128" height="128" alt="GitBit Logo">
+</p>
+
+A simple, powerful Git Graph for Cursor and VS Code, inspired by JetBrains IDEs.
+
+GitBit provides a lightweight and performant way to visualize your repository's history, manage branches, and perform complex Git operations like squashing directly from a beautiful graph interface.
+
+## ✨ Features
+
+- **Clean Graph**: A clean, topological visualization of your local and remote commits.
+- **Side-by-Side Details**: Instantly see commit metadata and changed files in a dedicated details pane.
+- **Advanced Squashing**: Select a range of commits and squash them with a single click, including automatic rebasing and commit message prompts.
+- **Branch Management**: Effortlessly switch branches, create new ones, and see your current context at a glance.
+- **Integrated Diff View**: Deep integration with native VS Code diffing for a seamless experience.
+- **Performance First**: Optimized for repositories of all sizes, with a focus on smooth scrolling and interaction.
+- **Theme-Aware**: Automatically matches your Cursor or VS Code theme.
+
+## 🚀 Getting Started
+
+### Installation
+
+1. Download the latest `.vsix` from the [Releases](https://github.com/filipstrand/gitbit/releases) page.
+2. Open Cursor or VS Code.
+3. Install the `.vsix` file:
+   - **Method 1**: Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`), type **"Extensions: Install from VSIX..."**, and select your downloaded file.
+   - **Method 2**: Open the Extensions view (`Cmd+Shift+X`), click the `...` (Views and More Actions) in the top right, and select **Install from VSIX...**.
+
+### Usage
+
+Once installed, GitBit will appear as a **GitBit** tab in your bottom panel (alongside Terminal and Output). 
+
+- **Click a commit**: View its details and changed files on the right.
+- **Right-click**: Access actions like Checkout, Reset, and Branch management.
+- **Cmd/Shift + Click**: Select a range of commits to preview a squash.
+
+## 🛠 Development
+
+### Building from Source
+
+If you want to build the extension yourself:
+
+1. Clone the repository.
+2. Run `npm install`.
+3. Run `npm run package` to compile the source and bundle the webview.
+4. Run `npx @vscode/vsce package` to generate the `.vsix` file.
+
+### Contributing
+
+- Open the repo in Cursor/VS Code and press `F5` to start the **Extension Development Host**.
+- For technical details, see the source code in `src/`.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
