@@ -998,6 +998,11 @@ body {
   border-color: var(--vscode-focusBorder);
 }
 
+.commit-message-input.has-error {
+  border-color: rgba(244, 135, 113, 0.5);
+  background-color: rgba(244, 135, 113, 0.05);
+}
+
 .commit-button {
   width: 100%;
   padding: 6px 16px;
@@ -1016,6 +1021,12 @@ body {
 .commit-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.commit-button.has-error {
+  background-color: rgba(244, 135, 113, 0.18);
+  color: var(--vscode-errorForeground, #f48771);
+  border: 1px solid rgba(244, 135, 113, 0.45);
 }
 
 .commit-actions-row {
@@ -1060,24 +1071,13 @@ body {
   gap: 6px;
 }
 
-.commit-button.commit-error {
-  background-color: rgba(244, 135, 113, 0.18);
-  color: var(--vscode-errorForeground, #f48771);
-  border: 1px solid rgba(244, 135, 113, 0.45);
-}
-
 .commit-error-banner {
   position: relative;
-  border: 1px solid rgba(244, 135, 113, 0.35);
-  background-color: rgba(244, 135, 113, 0.10);
+  border: 1px solid rgba(244, 135, 113, 0.6);
+  background-color: rgba(244, 135, 113, 0.16);
   color: var(--vscode-foreground);
   border-radius: 4px;
   padding: 8px 10px;
-}
-
-.commit-error-banner.ruff {
-  border-color: rgba(244, 135, 113, 0.6);
-  background-color: rgba(244, 135, 113, 0.16);
 }
 
 .commit-error-details {

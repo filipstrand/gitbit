@@ -6,7 +6,7 @@ try {
 } catch (e) {
   // Fallback for browser testing if needed
   vscodeApi = {
-    postMessage: (msg: any) => console.log('VSCode PostMessage:', msg),
+    postMessage: (msg: any) => {},
     getState: () => ({}),
     setState: (s: any) => {}
   };

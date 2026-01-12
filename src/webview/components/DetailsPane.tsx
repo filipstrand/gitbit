@@ -14,7 +14,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [revertSelectedPaths, setRevertSelectedPaths] = useState<Set<string>>(new Set());
   const [commitSubmitting, setCommitSubmitting] = useState(false);
-  const [commitError, setCommitError] = useState<{ title: string; details?: string; isRuff?: boolean } | null>(null);
+  const [commitError, setCommitError] = useState<{ title: string; details?: string } | null>(null);
   const [showFullMessage, setShowFullMessage] = useState(false);
 
   if (!sha) return <div style={{ padding: '16px', opacity: 0.6 }}>Select a commit to see details</div>;
@@ -37,8 +37,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     } catch (e: any) {
       const details = typeof e?.details === 'string' ? e.details : undefined;
       const title = e?.message || 'Commit failed';
-      const isRuff = /(^|\b)ruff(\b|:|-)/i.test(`${title}\n${details || ''}`);
-      setCommitError({ title, details, isRuff });
+      setCommitError({ title, details });
     } finally {
       setCommitSubmitting(false);
     }
@@ -244,7 +243,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
             {isUncommitted ? (
               <div className="commit-box-container">
                 <textarea
-                  className="commit-message-input"
+                  className={`commit-message-input ${commitError ? 'has-error' : ''}`}
                   placeholder="Commit message..."
                   value={commitMessage}
                   onChange={(e) => {
@@ -259,17 +258,17 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
                   </div>
                 </div>
                 {commitError && (
-                  <div className={`commit-error-banner ${commitError.isRuff ? 'ruff' : ''}`}>
+                  <div className="commit-error-banner">
                     <span
                       className="codicon codicon-copy commit-error-copy"
                       title="Copy error to clipboard"
                       onClick={() => {
-                        const title = commitError.isRuff ? 'Commit blocked by ruff hook' : commitError.title;
+                        const title = commitError.title;
                         const text = `${title}${commitError.details ? `\n\n${commitError.details.trim()}` : ''}`;
                         vscode.postMessage({ type: 'app/copyToClipboard', payload: { text } });
                       }}
                     />
-                    <div style={{ fontWeight: 600 }}>{commitError.isRuff ? 'Commit blocked by ruff hook' : commitError.title}</div>
+                    <div style={{ fontWeight: 600 }}>{commitError.title}</div>
                     {commitError.details && (
                       <pre className="commit-error-details">{commitError.details.trim()}</pre>
                     )}
@@ -277,7 +276,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
                 )}
                 <div className="commit-actions-row">
                   <button
-                    className={`toolbar-button commit-button ${commitError?.isRuff ? 'commit-error' : ''}`}
+                    className={`toolbar-button commit-button ${commitError ? 'has-error' : ''}`}
                     onClick={() => performCommit()}
                     disabled={selectedPaths.size === 0 || !commitMessage.trim() || commitSubmitting}
                   >

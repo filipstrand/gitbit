@@ -16,7 +16,6 @@ export class GitRunner {
 
   public async run(args: string[], timeout = 10000): Promise<GitResult> {
     const fullArgs = ['--no-pager', ...args];
-    console.log(`[GitRunner] Running: git ${fullArgs.join(' ')} in ${this._cwd}`);
     return new Promise((resolve, reject) => {
       const child = cp.spawn('git', fullArgs, { cwd: this._cwd });
       const stdoutBuffers: Buffer[] = [];

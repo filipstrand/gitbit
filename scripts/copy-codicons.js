@@ -28,8 +28,6 @@ function main() {
     }
     copyFileSync(src, dst);
   }
-
-  console.log(`[copy-codicons] Copied ${files.join(', ')} -> ${outDir}`);
 }
 
 main();
