@@ -69,6 +69,18 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     });
   };
 
+  const handleRevealInOS = (change: Change) => {
+    vscode.postMessage({
+      type: 'file/revealInOS',
+      requestId: `reveal-${Date.now()}`,
+      payload: {
+        path: change.path,
+        oldPath: change.oldPath,
+        status: change.status
+      }
+    });
+  };
+
   const handleFileClick = (change: Change) => {
     if (!details) return;
     
@@ -128,6 +140,16 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     }
   };
 
+  const copySubject = () => {
+    if (!details || details.sha === 'UNCOMMITTED') return;
+    const text = String(details.subject || '').trim();
+    if (!text) return;
+    vscode.postMessage({
+      type: 'app/copyToClipboard',
+      payload: { text }
+    });
+  };
+
   const isUncommitted = details?.sha === 'UNCOMMITTED';
   const allFilePaths = isUncommitted ? changes.map(c => c.path) : [];
   const hasExtendedMessage = !!details && !isUncommitted && details.message.trim() !== details.subject.trim();
@@ -182,6 +204,28 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     return 'No files selected';
   }, [selectedPaths.size]);
 
+  const handleCommitClick = () => {
+    // UX: if the user typed a message but forgot to select files, first click selects all,
+    // second click commits.
+    if (selectedPaths.size === 0) {
+      if (!commitMessage.trim()) return;
+      if (allFilePaths.length === 0) return;
+      selectAll();
+      return;
+    }
+    performCommit();
+  };
+
+  const handleAmendClick = () => {
+    // Same UX for amend (message optional): first click selects all if nothing is selected.
+    if (selectedPaths.size === 0) {
+      if (allFilePaths.length === 0) return;
+      selectAll();
+      return;
+    }
+    performCommit({ amend: true });
+  };
+
   const hasCommitBox = isUncommitted || (hasExtendedMessage && showFullMessage);
 
   const formatDateYYYYMMDD = (iso: string) => {
@@ -220,6 +264,25 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
                 />
               )}
               <span>{details.subject}</span>
+              {!isUncommitted && (
+                <span
+                  className="codicon codicon-copy details-subject-copy"
+                  role="button"
+                  tabIndex={0}
+                  title="Copy commit title"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copySubject();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      copySubject();
+                    }
+                  }}
+                />
+              )}
             </div>
             {!isUncommitted && (
               <div className="meta">
@@ -277,15 +340,15 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
                 <div className="commit-actions-row">
                   <button
                     className={`toolbar-button commit-button ${commitError ? 'has-error' : ''}`}
-                    onClick={() => performCommit()}
-                    disabled={selectedPaths.size === 0 || !commitMessage.trim() || commitSubmitting}
+                    onClick={handleCommitClick}
+                    disabled={!commitMessage.trim() || commitSubmitting || allFilePaths.length === 0}
                   >
                     {commitSubmitting ? 'Committing…' : 'Commit'}
                   </button>
                   <button
                     className="toolbar-button commit-button amend-button"
-                    onClick={() => performCommit({ amend: true })}
-                    disabled={selectedPaths.size === 0 || commitSubmitting}
+                    onClick={handleAmendClick}
+                    disabled={commitSubmitting || allFilePaths.length === 0}
                     title={commitMessage.trim() ? 'Amend last commit (update message and include staged changes)' : 'Amend last commit (keep message and include staged changes)'}
                   >
                     Amend
@@ -318,6 +381,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
               changes={changes} 
               onFileClick={handleFileClick} 
               onSecondaryAction={handleFileDiff}
+              onRevealInOS={handleRevealInOS}
               onRevertCommitted={isUncommitted ? undefined : handleRevertCommitted}
               onDiscard={isUncommitted ? handleDiscard : undefined} 
               selectable={isUncommitted}

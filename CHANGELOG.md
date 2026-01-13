@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Commit graph context menu overhaul (grouping + orange/green tone highlights).
+- Drop commits (single or multi-select) with confirmation + automatic rollback on failure.
+- Reveal-in-Finder folder action in file lists (details + squash preview), with fallback to nearest existing parent folder.
+- Uncommitted changes: discard icon always visible per file; commit button selects all on first click when message is present.
+- Diff opens in a floating window; closing the floating window no longer leaves a stray diff tab behind.
+- Copy icon to copy commit title/subject in the right-hand details view.
+- Move mode: clicking in the editor now cancels move mode (equivalent to Escape).
+
 ## 0.1.1
 
 - Generalize commit error handling UI (red border/background for any failure).

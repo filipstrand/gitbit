@@ -839,6 +839,27 @@ body {
   opacity: 1;
 }
 
+.details-subject-copy {
+  opacity: 0.7;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 4px;
+  padding: 2px;
+  margin: -2px; /* keep layout stable when padding is applied */
+  transition: background-color 90ms ease, box-shadow 90ms ease, opacity 90ms ease;
+}
+
+.details-subject-copy:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.14));
+  box-shadow: inset 0 0 0 1px var(--vscode-toolbar-hoverOutline, rgba(128, 128, 128, 0.22));
+}
+
+.details-subject-copy:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
 .details-header .meta {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
@@ -922,6 +943,26 @@ body {
   margin-left: 8px;
 }
 
+.file-actions .codicon,
+.commit-row-actions .codicon {
+  border-radius: 4px;
+  padding: 2px;
+  margin: -2px; /* keep layout stable when padding is applied */
+  transition: background-color 90ms ease, box-shadow 90ms ease, opacity 90ms ease;
+}
+
+.file-actions .codicon:hover,
+.commit-row-actions .codicon:hover {
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.14));
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder, rgba(255, 255, 255, 0.25)) inset;
+}
+
+.file-actions .codicon:focus-visible,
+.commit-row-actions .codicon:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, rgba(255, 255, 255, 0.35));
+  outline-offset: 1px;
+}
+
 .codicon-discard, .codicon-diff {
   font-size: 14px;
   opacity: 0;
@@ -939,6 +980,14 @@ body {
 .file-item:hover .codicon-discard, 
 .file-item:hover .codicon-diff {
   opacity: 0.8;
+}
+
+.details-pane.uncommitted .file-item .file-actions .codicon-discard {
+  opacity: 0.8;
+}
+
+.details-pane.uncommitted .file-item .file-actions .codicon-discard:hover {
+  opacity: 1 !important;
 }
 
 .codicon-discard:hover,

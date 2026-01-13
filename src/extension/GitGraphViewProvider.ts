@@ -20,6 +20,9 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
   private _disposables: vscode.Disposable[] = [];
   private _startTime: string = new Date().toISOString();
   private _repoChangedTimer: NodeJS.Timeout | undefined;
+  private _ephemeralDiffKeys = new Set<string>();
+  private _ephemeralDiffCloser?: vscode.Disposable;
+  private _moveModeActive = false;
 
   constructor(private readonly _extensionUri: vscode.Uri) {
     this._outputChannel = vscode.window.createOutputChannel('GitBit');
@@ -56,6 +59,37 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
       path: '/' + p,
       query
     });
+  }
+
+  private _ensureEphemeralDiffCloser() {
+    if (this._ephemeralDiffCloser) return;
+    this._ephemeralDiffCloser = vscode.window.tabGroups.onDidChangeTabs(() => {
+      void this._closeEphemeralDiffTabs();
+    });
+    this._disposables.push(this._ephemeralDiffCloser);
+  }
+
+  private async _closeEphemeralDiffTabs() {
+    if (this._ephemeralDiffKeys.size === 0) return;
+
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        const input = tab.input;
+        if (input instanceof vscode.TabInputTextDiff) {
+          const key = `${input.original.toString()}@@${input.modified.toString()}`;
+          if (this._ephemeralDiffKeys.has(key)) {
+            try {
+              // Close the tab without stealing focus.
+              await vscode.window.tabGroups.close(tab, true);
+            } catch (err: any) {
+              this._outputChannel.appendLine(`Failed to auto-close returned diff tab: ${err?.message ?? String(err)}`);
+            } finally {
+              this._ephemeralDiffKeys.delete(key);
+            }
+          }
+        }
+      }
+    }
   }
 
   private async _discoverRepos(): Promise<RepoInfo[]> {
@@ -178,6 +212,11 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
       this._outputChannel.appendLine(`Received message: ${message.type} (${message.requestId})`);
       try {
         switch (message.type) {
+          case 'ui/moveMode': {
+            this._moveModeActive = !!message.payload?.active;
+            this._sendResponse(message.requestId, 'ok');
+            break;
+          }
           case 'repos/list': {
             const base = await this._discoverRepos();
             const enriched = await Promise.all(
@@ -459,6 +498,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
             
             this._outputChannel.appendLine(`Opening diff: ${leftUri.toString()} <-> ${rightUri.toString()}`);
+            const diffKey = `${leftUri.toString()}@@${rightUri.toString()}`;
             
             // Find first diff line to jump to
             let diffSelection: vscode.Range | undefined;
@@ -492,11 +532,80 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             // Attempt to move the diff to a new floating window
             try {
               await vscode.commands.executeCommand('workbench.action.moveEditorToNewWindow');
+              // VS Code will "return" moved editors back into the original window when the floating window closes.
+              // We track this diff and auto-close it if it reappears as a tab.
+              this._ensureEphemeralDiffCloser();
+              this._ephemeralDiffKeys.add(diffKey);
+              setTimeout(() => this._ephemeralDiffKeys.delete(diffKey), 5 * 60 * 1000).unref?.();
             } catch (err) {
               this._outputChannel.appendLine(`Failed to move to new window: ${err}`);
               // Fallback: stay in the current column if moving fails
             }
             break;
+          case 'file/revealInOS': {
+            if (!this._gitRunner) return;
+            const relPathRaw: unknown = message.payload?.path;
+            const oldPathRaw: unknown = message.payload?.oldPath;
+            const relPath = typeof relPathRaw === 'string' ? relPathRaw : '';
+            const oldRelPath = typeof oldPathRaw === 'string' ? oldPathRaw : '';
+
+            const repoRoot = this._gitRunner!.cwd;
+
+            const exists = async (fsPath: string) => {
+              try {
+                await fs.promises.stat(fsPath);
+                return true;
+              } catch {
+                return false;
+              }
+            };
+
+            const revealPathOrParent = async (repoRelativePath: string) => {
+              const full = path.join(repoRoot, repoRelativePath);
+              if (await exists(full)) {
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(full));
+                return true;
+              }
+
+              // If the file doesn't exist in the working tree (common when viewing older commits),
+              // fall back to revealing the nearest existing parent folder.
+              let dir = path.dirname(full);
+              while (dir && dir !== repoRoot && dir.startsWith(repoRoot + path.sep)) {
+                if (await exists(dir)) {
+                  await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(dir));
+                  return true;
+                }
+                const next = path.dirname(dir);
+                if (next === dir) break;
+                dir = next;
+              }
+
+              // Final fallback: reveal repo root.
+              if (await exists(repoRoot)) {
+                await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(repoRoot));
+                return true;
+              }
+
+              return false;
+            };
+
+            if (!relPath) {
+              vscode.window.showWarningMessage('Reveal in Finder: missing file path.');
+              break;
+            }
+
+            // Prefer current path, fall back to old path (renames).
+            const ok = await revealPathOrParent(relPath);
+            if (!ok && oldRelPath) {
+              const okOld = await revealPathOrParent(oldRelPath);
+              if (okOld) break;
+            }
+
+            if (!ok) {
+              vscode.window.showWarningMessage('Cannot reveal: failed to resolve a path to reveal.');
+            }
+            break;
+          }
           case 'git/reword': {
             if (!this._gitRunner) return;
             const rewordSha = message.payload.sha;
@@ -1553,11 +1662,16 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
 
                 // Restore previously staged changes (best effort).
                 if (stagedPatchFile) {
-                  const applyRes = await this._gitRunner.run(['apply', '--cached', '--whitespace=nowarn', stagedPatchFile]);
+                  // First attempt: 3-way apply (more robust when history/index moved, e.g. after a soft reset).
+                  let applyRes = await this._gitRunner.run(['apply', '--cached', '--3way', '--whitespace=nowarn', stagedPatchFile]);
+                  if (applyRes.exitCode !== 0) {
+                    // Fallback: plain apply (some patch types don't support 3-way).
+                    applyRes = await this._gitRunner.run(['apply', '--cached', '--whitespace=nowarn', stagedPatchFile]);
+                  }
                   if (applyRes.exitCode !== 0) {
                     this._outputChannel.appendLine(`Warning: failed to restore previously staged changes: ${applyRes.stderr}`);
                     vscode.window.showWarningMessage(
-                      'Checkpoint commit succeeded, but restoring previously staged changes failed. You may need to re-stage them manually.'
+                      'Commit succeeded, but GitBit could not restore your previously staged changes. You may need to re-stage them manually.'
                     );
                   }
                 }
@@ -1779,6 +1893,162 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               this._outputChannel.appendLine('Squash successful.');
                 this._notifyRepoChanged('squash');
               this._sendResponse(message.requestId, 'ok');
+              } finally {
+                // Best-effort cleanup of temp branch.
+                await this._gitRunner.run(['branch', '-D', tmpBranch]);
+              }
+            }
+            break;
+          case 'git/drop':
+            if (!this._gitRunner) return;
+            {
+              const dropShas: string[] = Array.isArray(message.payload?.shas)
+                ? (message.payload.shas as any[]).map(s => String(s)).filter(s => s && s !== GitGraphViewProvider.UNCOMMITTED_SHA)
+                : [];
+
+                
+
+              if (dropShas.length < 1) {
+                this._sendError(message.requestId, 'Invalid selection for drop');
+                break;
+              }
+
+              if (!(await this._ensureClean('Dropping commits rewrites history. You have local changes. Continue?'))) {
+                this._sendError(message.requestId, 'Drop cancelled');
+                break;
+              }
+
+              const branchRes = await this._gitRunner.run(['symbolic-ref', '--quiet', '--short', 'HEAD']);
+              const originalBranch = branchRes.exitCode === 0 ? branchRes.stdout.trim() : null;
+              if (!originalBranch) {
+                this._sendError(message.requestId, 'Drop is not supported in detached HEAD state. Checkout a branch first.');
+                break;
+              }
+
+              const tipRes = await this._gitRunner.run(['rev-parse', 'HEAD']);
+              const originalTip = tipRes.exitCode === 0 ? tipRes.stdout.trim() : '';
+              if (!originalTip) {
+                this._sendError(message.requestId, 'Failed to determine current HEAD');
+                break;
+              }
+
+              // Use first-parent log for consistent ordering with the UI.
+              const logRes = await this._gitRunner.run(['log', '--first-parent', '--format=%H']);
+              if (logRes.exitCode !== 0) {
+                this._sendError(message.requestId, 'Failed to fetch log for drop', logRes.stderr);
+                break;
+              }
+              const allNewestFirst = logRes.stdout.trim().split('\n').filter(Boolean);
+              const allOldestFirst = [...allNewestFirst].reverse();
+
+              const selectedPositions = dropShas.map(sha => allOldestFirst.indexOf(sha));
+              if (selectedPositions.some(p => p === -1)) {
+                this._sendError(message.requestId, 'Drop failed: one or more selected commits are not on the current branch history.');
+                break;
+              }
+
+              const startPos = Math.min(...selectedPositions);
+              const rangeOldestFirst = allOldestFirst.slice(startPos);
+              const startCommit = rangeOldestFirst[0];
+
+              // Determine base (parent of range start). If range start is root, we currently don't support this.
+              const parentsRes = await this._gitRunner.run(['rev-list', '--parents', '-n', '1', startCommit]);
+              const parts = parentsRes.exitCode === 0 ? parentsRes.stdout.trim().split(' ') : [];
+              if (parts.length < 2) {
+                this._sendError(message.requestId, 'Cannot drop commits when the operation includes the root commit (not supported yet).');
+                break;
+              }
+              const baseSha = parts[1];
+
+              // For now, only support linear history (no merge commits) in the rewritten range.
+              let hasMergeCommit = false;
+              for (const sha of rangeOldestFirst) {
+                const p = await this._gitRunner.run(['rev-list', '--parents', '-n', '1', sha]);
+                const toks = p.exitCode === 0 ? p.stdout.trim().split(' ').filter(Boolean) : [];
+                if (toks.length > 2) {
+                  this._sendError(message.requestId, 'Drop is not supported for merge commits yet.');
+                  hasMergeCommit = true;
+                  break;
+                }
+              }
+              if (hasMergeCommit) break;
+
+              const selectedSet = new Set(dropShas);
+              const remainingSeq = rangeOldestFirst.filter(sha => !selectedSet.has(sha));
+              const dropCount = rangeOldestFirst.length - remainingSeq.length;
+
+              if (dropCount <= 0) {
+                this._sendResponse(message.requestId, { newHead: originalTip });
+                break;
+              }
+
+              const confirm = await vscode.window.showWarningMessage(
+                `Drop ${dropCount} commit(s) and rewrite history on ${originalBranch}? This will rewrite ${remainingSeq.length} commit(s) that come after the oldest dropped commit.`,
+                { modal: true },
+                'Drop'
+              );
+              if (confirm !== 'Drop') {
+                this._sendError(message.requestId, 'Drop cancelled');
+                break;
+              }
+
+              const tmpBranch = `cgg-tmp-drop-${Date.now()}`;
+              await this._gitRunner.run(['branch', tmpBranch, originalTip]);
+
+              const restoreOriginal = async () => {
+                await this._gitRunner!.run(['checkout', originalBranch]);
+                await this._gitRunner!.run(['reset', '--hard', originalTip]);
+              };
+
+              try {
+                const checkoutBase = await this._gitRunner.run(['checkout', '--detach', baseSha]);
+                if (checkoutBase.exitCode !== 0) {
+                  this._sendError(message.requestId, 'Failed to checkout base for drop', checkoutBase.stderr);
+                  await restoreOriginal();
+                  break;
+                }
+
+                let cherryFailed = false;
+                for (const sha of remainingSeq) {
+                  const cherryRes = await this._gitRunner.run(['cherry-pick', sha], 600000);
+                  if (cherryRes.exitCode !== 0) {
+                    await this._gitRunner.run(['cherry-pick', '--abort']);
+                    await restoreOriginal();
+                    this._sendError(
+                      message.requestId,
+                      'Drop failed due to conflicts while rewriting history. Your branch was restored.',
+                      cherryRes.stderr
+                    );
+                    cherryFailed = true;
+                    break;
+                  }
+                }
+                if (cherryFailed) break;
+
+                const newTipRes = await this._gitRunner.run(['rev-parse', 'HEAD']);
+                const newTip = newTipRes.exitCode === 0 ? newTipRes.stdout.trim() : '';
+                if (!newTip) {
+                  await restoreOriginal();
+                  this._sendError(message.requestId, 'Drop failed: could not resolve new HEAD.');
+                  break;
+                }
+
+                const checkoutBranch = await this._gitRunner.run(['checkout', originalBranch]);
+                if (checkoutBranch.exitCode !== 0) {
+                  await restoreOriginal();
+                  this._sendError(message.requestId, 'Drop failed: could not return to branch.', checkoutBranch.stderr);
+                  break;
+                }
+
+                const resetBranch = await this._gitRunner.run(['reset', '--hard', newTip]);
+                if (resetBranch.exitCode !== 0) {
+                  await restoreOriginal();
+                  this._sendError(message.requestId, 'Drop failed: could not move branch to new history.', resetBranch.stderr);
+                  break;
+                }
+
+                this._notifyRepoChanged('drop');
+                this._sendResponse(message.requestId, { newHead: newTip });
               } finally {
                 // Best-effort cleanup of temp branch.
                 await this._gitRunner.run(['branch', '-D', tmpBranch]);
@@ -2208,6 +2478,13 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     this._disposables.push(vscode.window.onDidChangeWindowState(e => {
       // When the window regains focus, refresh to pick up external git operations / file changes.
       if (e.focused) notify('focus');
+    }));
+
+    // If the user clicks in an editor while commits are in "move mode", treat it as Escape (cancel move mode).
+    this._disposables.push(vscode.window.onDidChangeTextEditorSelection(e => {
+      if (!this._moveModeActive) return;
+      if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
+      this._view?.webview.postMessage({ type: 'ui/escape' });
     }));
 
     // 2. Watch .git changes (HEAD, refs, index) as a fallback / for non-working-tree events.

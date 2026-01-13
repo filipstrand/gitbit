@@ -6,8 +6,9 @@ interface ContextMenuProps {
   onClose: () => void;
   actions: {
     label?: string;
-    onClick?: () => void;
+    onClick?: () => void | Promise<unknown>;
     danger?: boolean;
+    tone?: 'warning' | 'success';
     icon?: string;
     disabled?: boolean;
     primary?: boolean;
@@ -51,6 +52,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
 
           const disabled = !!action.disabled;
           const label = action.label || '';
+          const baseColor =
+            action.danger
+              ? 'var(--vscode-errorForeground)'
+              : action.tone === 'warning'
+                ? 'var(--vscode-editorWarning-foreground, #d19a66)'
+                : action.tone === 'success'
+                  ? 'var(--vscode-gitDecoration-addedResourceForeground, #73c991)'
+                  : 'inherit';
+          const isToned = !!action.danger || !!action.tone;
 
           return (
           <div
@@ -64,7 +74,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
               padding: '6px 12px',
                 cursor: disabled ? 'default' : 'pointer',
                 opacity: disabled ? 0.45 : 1,
-              color: action.danger ? 'var(--vscode-errorForeground)' : 'inherit',
+              color: baseColor,
               fontSize: '12px',
               display: 'flex',
               alignItems: 'center',
@@ -75,11 +85,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
             onMouseEnter={(e) => {
                 if (disabled) return;
               e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground)';
-              e.currentTarget.style.color = action.danger ? 'var(--vscode-errorForeground)' : 'var(--vscode-menu-selectionForeground)';
+              e.currentTarget.style.color = isToned ? baseColor : 'var(--vscode-menu-selectionForeground)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = action.danger ? 'var(--vscode-errorForeground)' : 'inherit';
+              e.currentTarget.style.color = baseColor;
             }}
           >
             {action.icon ? (

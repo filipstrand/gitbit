@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Change } from '../../extension/protocol/types';
+import { iconTheme } from '../state/iconTheme';
 
 declare global {
   interface Window {
@@ -11,6 +12,7 @@ interface FileTreeProps {
   changes: Change[];
   onFileClick: (change: Change) => void;
   onSecondaryAction?: (change: Change) => void;
+  onRevealInOS?: (change: Change) => void;
   onRevertCommitted?: (changes: Change[]) => void;
   onDiscard?: (paths: string[]) => void;
   selectable?: boolean;
@@ -30,6 +32,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
   changes,
   onFileClick,
   onSecondaryAction,
+  onRevealInOS,
   onRevertCommitted,
   onDiscard,
   selectable,
@@ -37,6 +40,12 @@ export const FileTree: React.FC<FileTreeProps> = ({
   selectedPaths,
   onToggleSelect
 }) => {
+  const getFolderIcon = (isExpanded: boolean) => {
+    const base = window.iconsUri;
+    const p = (isExpanded ? iconTheme.folderExpanded : iconTheme.folder) || iconTheme.folder;
+    return `${base}/${p}`;
+  };
+
   const changeByPath = useMemo(() => {
     const map = new Map<string, Change>();
     for (const c of changes) map.set(c.path, c);
@@ -92,47 +101,20 @@ export const FileTree: React.FC<FileTreeProps> = ({
   };
 
   const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const lower = fileName.toLowerCase();
+    const ext = (lower.includes('.') ? lower.split('.').pop() : '') ?? '';
     const base = window.iconsUri;
-    
-    switch (ext) {
-      case 'py':
-        return `${base}/python.svg`;
-      case 'ts':
-        return `${base}/typeScript.svg`;
-      case 'tsx':
-        return `${base}/react.svg`;
-      case 'js':
-      case 'jsx':
-        return `${base}/javaScript.svg`;
-      case 'json':
-        return `${base}/json.svg`;
-      case 'md':
-        return `${base}/markdown.svg`;
-      case 'yaml':
-      case 'yml':
-        return `${base}/yaml.svg`;
-      case 'html':
-        return `${base}/html.svg`;
-      case 'css':
-        return `${base}/css.svg`;
-      case 'rs':
-        return `${base}/rust.svg`;
-      case 'go':
-        return `${base}/go.svg`;
-      case 'c':
-        return `${base}/c.svg`;
-      case 'cpp':
-      case 'cc':
-      case 'cxx':
-        return `${base}/cpp.svg`;
-      case 'dockerfile':
-        return `${base}/docker.svg`;
-      default:
-        if (fileName.startsWith('.git')) return `${base}/git.svg`;
-        if (fileName.toLowerCase().includes('docker')) return `${base}/docker.svg`;
-        return `${base}/file.svg`;
-    }
+
+    // 1) Exact filename mapping
+    const byName = iconTheme.fileNames[lower];
+    if (byName) return `${base}/${byName}`;
+
+    // 2) Extension mapping
+    const byExt = iconTheme.fileExtensions[ext];
+    if (byExt) return `${base}/${byExt}`;
+
+    // 3) Fallback
+    return `${base}/${iconTheme.file || 'text.svg'}`;
   };
 
   const renderNode = (node: TreeNode, depth: number) => {
@@ -215,7 +197,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
             <>
               <span className={`codicon ${isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} />
               <img 
-                src={`${window.iconsUri}/folder_dark.svg`} 
+                src={getFolderIcon(isExpanded)}
                 alt="folder" 
                 style={{ width: '16px', height: '16px', marginRight: '6px' }}
               />
@@ -255,6 +237,16 @@ export const FileTree: React.FC<FileTreeProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     onSecondaryAction(currentNode.change!);
+                  }}
+                />
+              )}
+              {onRevealInOS && (
+                <span
+                  className="codicon codicon-folder"
+                  title="Reveal in Finder"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRevealInOS(currentNode.change!);
                   }}
                 />
               )}

@@ -86,6 +86,18 @@ export const SquashPreview: React.FC<SquashPreviewProps> = ({ shas, commits }) =
     });
   };
 
+  const handleRevealInOS = (change: Change) => {
+    vscode.postMessage({
+      type: 'file/revealInOS',
+      requestId: `reveal-${Date.now()}`,
+      payload: {
+        path: change.path,
+        oldPath: change.oldPath,
+        status: change.status
+      }
+    });
+  };
+
   const handleSquash = () => {
     const selected = shas.filter(s => s && s !== 'UNCOMMITTED');
     if (selected.length < 2) return;
@@ -126,6 +138,7 @@ export const SquashPreview: React.FC<SquashPreviewProps> = ({ shas, commits }) =
               changes={changes} 
               onFileClick={handleFileClick} 
               onSecondaryAction={handleFileDiff}
+              onRevealInOS={handleRevealInOS}
             />
           </>
         )}
