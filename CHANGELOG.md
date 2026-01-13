@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- Merge commits: show changed files correctly when selecting a merge commit.
+- Commit context menu: add tag, delete tags via flyout submenu (only shown when tags exist), and reset soft moved above branch actions.
+- Push: tag-aware flow (offers pushing only new tags when branch is up to date).
+- Commit UI: Option/Alt toggles “(without checks)” and commits with `--no-verify`; hook failure banner clears on outside click / editor click.
+- Diff: floating window behavior improved so closing it doesn’t leave a stray diff tab behind.
+
 ## 0.2.0
 
 - Commit graph context menu overhaul (grouping + orange/green tone highlights).
