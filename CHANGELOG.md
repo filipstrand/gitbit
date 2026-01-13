@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Branch filtering: when filtering on `HEAD` / a branch, show the full merged history (not just `--first-parent`) so merged-in branch commits are visible.
+- File icons: expanded curated icon mapping to cover Python (and other common file types) correctly.
+- File list UX: clicking a file now always opens the file; diffs are only opened via the dedicated diff icon/button (no surprise diff tabs).
+
 ## 0.2.1
 
 - Merge commits: show changed files correctly when selecting a merge commit.
