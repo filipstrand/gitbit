@@ -302,10 +302,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             if (branch === '--all') {
               args.push('--all');
             } else {
-              // When not showing all, we usually want first-parent for a cleaner view,
-              // but if the user wants a "graph", we should maybe allow toggling it.
-              // For now, let's keep it simple: if a specific branch is picked, we show its history.
-              args.push('--first-parent');
+              // When filtering on a branch, show the full reachable history (including merged-in branches),
+              // so merge commits expose the commits/branches that were integrated.
               args.push(branch);
             }
 
