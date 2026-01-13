@@ -13,8 +13,12 @@ GitBit provides a lightweight and performant way to visualize your repository's 
 - **Clean Graph**: A clean, topological visualization of your local and remote commits.
 - **Side-by-Side Details**: Instantly see commit metadata and changed files in a dedicated details pane.
 - **Advanced Squashing**: Select a range of commits and squash them with a single click, including automatic rebasing and commit message prompts.
+- **Drop Commits**: Select one or multiple commits and drop them safely (with confirmation + automatic rollback on failure).
 - **Branch Management**: Effortlessly switch branches, create new ones, and see your current context at a glance.
+- **Tag Management**: Add tags to commits, delete tags via a flyout submenu, and push tags even when your branch is up to date.
 - **Integrated Diff View**: Deep integration with native VS Code diffing for a seamless experience.
+- **Reveal in Finder**: Reveal changed files in Finder/Explorer from the details pane.
+- **Move Mode**: Reorder history with a drag-and-drop “move mode” UI.
 - **Performance First**: Optimized for repositories of all sizes, with a focus on smooth scrolling and interaction.
 - **Theme-Aware**: Automatically matches your Cursor or VS Code theme.
 
@@ -33,8 +37,10 @@ GitBit provides a lightweight and performant way to visualize your repository's 
 Once installed, GitBit will appear as a **GitBit** tab in your bottom panel (alongside Terminal and Output). 
 
 - **Click a commit**: View its details and changed files on the right.
-- **Right-click**: Access actions like Checkout, Reset, and Branch management.
+- **Right-click**: Access actions like Rename, Move, Cherry-pick, Drop, Branch/Tag actions, and resets.
 - **Cmd/Shift + Click**: Select a range of commits to preview a squash.
+
+For a detailed list of changes by version, see [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## 🛠 Development
 
