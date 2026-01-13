@@ -1,7 +1,7 @@
 # GitBit
 
 <p align="center">
-  <img src="media/logo.png" width="128" height="128" alt="GitBit Logo">
+  <img src="media/screenshot.png" alt="GitBit Screenshot">
 </p>
 
 A simple, powerful Git Graph for Cursor and VS Code, inspired by JetBrains IDEs.
