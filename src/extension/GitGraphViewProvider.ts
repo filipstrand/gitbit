@@ -627,7 +627,10 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             break;
           }
           case 'git/reword': {
-            if (!this._gitRunner) return;
+            if (!this._gitRunner) {
+              this._sendError(message.requestId, 'No repository found');
+              break;
+            }
             const rewordSha = message.payload.sha;
             let newMessage = message.payload.message;
 
@@ -643,7 +646,10 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               });
             }
 
-            if (!newMessage) return;
+            if (!newMessage) {
+              this._sendError(message.requestId, 'Rename cancelled');
+              break;
+            }
             
             this._outputChannel.appendLine(`Attempting to reword commit ${rewordSha.substring(0, 8)} to: "${newMessage}"`);
 
