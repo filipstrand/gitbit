@@ -985,6 +985,10 @@ const App = () => {
               }
 
               const singleSha = contextShas[0];
+              const singleCommit: any | undefined = commits.find(c => c.sha === singleSha);
+              const tagNames: string[] = (singleCommit?.refs || [])
+                .filter((r: any) => r?.type === 'tag' && typeof r?.name === 'string' && r.name.length > 0)
+                .map((r: any) => String(r.name));
               return [
                 {
                   label: 'Rename',
@@ -1007,6 +1011,31 @@ const App = () => {
                   icon: 'codicon-merge-into',
                   onClick: () => gitAction('git/cherryPick', { shas: [singleSha] })
                 },
+                { separator: true },
+                {
+                  label: 'Add tag…',
+                  icon: 'codicon-tag',
+                  onClick: async () => { await gitAction('git/tagAdd', { sha: singleSha }); }
+                },
+                ...(tagNames.length > 0 ? [{
+                  label: 'Delete tag(s)',
+                  icon: 'codicon-tag',
+                  submenu: [
+                    ...tagNames.map(tag => ({
+                      label: tag,
+                      icon: 'codicon-tag',
+                      onClick: async () => { await gitAction('git/tagDelete', { tags: [tag] }); }
+                    })),
+                    ...(tagNames.length > 1 ? [
+                      { separator: true },
+                      {
+                        label: 'Delete multiple…',
+                        icon: 'codicon-list-selection',
+                        onClick: async () => { await gitAction('git/tagDelete', { sha: singleSha }); }
+                      }
+                    ] : [])
+                  ]
+                }] : []),
                 { separator: true },
                 {
                   label: 'New Branch…',

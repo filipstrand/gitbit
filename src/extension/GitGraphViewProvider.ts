@@ -793,6 +793,105 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
             break;
           }
+          case 'git/tagAdd': {
+            if (!this._gitRunner) return;
+            const sha = String(message.payload?.sha || '').trim();
+            if (!sha || sha === GitGraphViewProvider.UNCOMMITTED_SHA) {
+              this._sendError(message.requestId, 'Add tag failed: invalid commit');
+              break;
+            }
+
+            const name = await vscode.window.showInputBox({
+              title: 'Add Tag',
+              prompt: `Create a local tag pointing to ${sha.substring(0, 8)}`,
+              placeHolder: 'v1.2.3',
+              ignoreFocusOut: true,
+              validateInput: (v) => {
+                const s = v.trim();
+                if (!s) return 'Tag name is required';
+                if (/\s/.test(s)) return 'Tag names cannot contain spaces';
+                return null;
+              }
+            });
+
+            if (!name) {
+              this._sendError(message.requestId, 'Add tag cancelled');
+              break;
+            }
+
+            const tagName = name.trim();
+            const res = await this._gitRunner.run(['tag', tagName, sha]);
+            if (res.exitCode === 0) {
+              this._notifyRepoChanged('tag add');
+              vscode.window.showInformationMessage(`Created tag "${tagName}"`);
+              this._sendResponse(message.requestId, 'ok');
+            } else {
+              this._sendError(message.requestId, 'Add tag failed', res.stderr);
+            }
+            break;
+          }
+          case 'git/tagDelete': {
+            if (!this._gitRunner) return;
+            const directTagsRaw: unknown = message.payload?.tags;
+            const directTags = Array.isArray(directTagsRaw)
+              ? directTagsRaw.map(t => String(t).trim()).filter(Boolean)
+              : [];
+
+            let picked: string[] = [];
+            if (directTags.length > 0) {
+              picked = directTags;
+            } else {
+              const sha = String(message.payload?.sha || '').trim();
+              if (!sha || sha === GitGraphViewProvider.UNCOMMITTED_SHA) {
+                this._sendError(message.requestId, 'Delete tags failed: invalid commit');
+                break;
+              }
+
+              const tagsRes = await this._gitRunner.run(['tag', '--points-at', sha]);
+              const tags = tagsRes.exitCode === 0
+                ? tagsRes.stdout.split('\n').map(t => t.trim()).filter(Boolean)
+                : [];
+
+              if (tags.length === 0) {
+                vscode.window.showInformationMessage('No tags point at this commit.');
+                this._sendResponse(message.requestId, 'ok');
+                break;
+              }
+
+              const pickRes = await vscode.window.showQuickPick(tags, {
+                title: 'Delete Tag(s)',
+                placeHolder: 'Select tag(s) to delete locally',
+                canPickMany: true,
+                ignoreFocusOut: true
+              });
+
+              if (!pickRes || pickRes.length === 0) {
+                this._sendError(message.requestId, 'Delete tags cancelled');
+                break;
+              }
+              picked = pickRes;
+            }
+
+            const confirm = await vscode.window.showWarningMessage(
+              `Delete ${picked.length} local tag(s)? (This does not delete remote tags.)`,
+              { modal: true, detail: picked.join('\n') },
+              'Delete'
+            );
+            if (confirm !== 'Delete') {
+              this._sendError(message.requestId, 'Delete tags cancelled');
+              break;
+            }
+
+            const delRes = await this._gitRunner.run(['tag', '-d', ...picked]);
+            if (delRes.exitCode === 0) {
+              this._notifyRepoChanged('tag delete');
+              vscode.window.showInformationMessage(`Deleted ${picked.length} tag(s) locally.`);
+              this._sendResponse(message.requestId, 'ok');
+            } else {
+              this._sendError(message.requestId, 'Delete tags failed', delRes.stderr);
+            }
+            break;
+          }
           case 'git/checkout': {
             if (!this._gitRunner) return;
             const checkoutTargetRaw = String(message.payload?.sha || '').trim();
@@ -1030,7 +1129,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
           }
           case 'git/fetch': {
             if (!this._gitRunner) return;
-            const fetchRes = await this._gitRunner.run(['fetch', '--all', '--prune']);
+            // Include tags so tag-heavy workflows stay in sync (fetch does not always fetch all tags by default).
+            const fetchRes = await this._gitRunner.run(['fetch', '--all', '--prune', '--tags']);
             if (fetchRes.exitCode === 0) {
               // Treat fetch as a "manual refresh" as well.
               this._notifyRepoChanged('fetch');
@@ -1079,7 +1179,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
           case 'git/pull': {
             if (!this._gitRunner) return;
             if (await this._ensureClean('You have local changes. Pulling might cause conflicts. Continue?')) {
-              const pullRes = await this._gitRunner.run(['pull']);
+              // Include tags so tag-heavy workflows stay in sync.
+              const pullRes = await this._gitRunner.run(['pull', '--tags']);
               if (pullRes.exitCode === 0) {
                 // Treat pull as a "manual refresh" as well.
                 this._notifyRepoChanged('pull');
@@ -1171,7 +1272,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
 
             this._outputChannel.appendLine(isForce ? 'Force pushing changes...' : 'Pushing changes...');
-            const pushArgs = ['push'];
+            // Include tags by default (safe variant: pushes annotated tags reachable from the pushed commits).
+            const pushArgs = ['push', '--follow-tags'];
             if (isForce) pushArgs.push('--force-with-lease');
             
             const shouldSetUpstream = hasUpstreamForPush === false;
