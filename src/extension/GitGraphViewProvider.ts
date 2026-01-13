@@ -1383,18 +1383,23 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             const createUri = (rev: string, p: string) => this._createContentUri(rev, p);
 
             try {
-              // Uncommitted: open the real file on disk (fallback to diff for deleted).
+              const openTextOrBinary = async (uri: vscode.Uri, opts?: { selection?: vscode.Range }) => {
+                try {
+                  const doc = await vscode.workspace.openTextDocument(uri);
+                  await vscode.window.showTextDocument(doc, { preview: false, selection: opts?.selection });
+                } catch {
+                  // If it's not a text document (binary, too large, unknown scheme handler), fall back to VS Code's default opener.
+                  await vscode.commands.executeCommand('vscode.open', uri, { preview: false });
+                }
+              };
+
+              // Uncommitted: open the real file on disk (deleted opens the previous content at HEAD).
               if (sha === GitGraphViewProvider.UNCOMMITTED_SHA || target === GitGraphViewProvider.UNCOMMITTED_SHA) {
                 const effectiveStatus = status.toUpperCase();
                 if (effectiveStatus === 'D') {
-                  // Can't open a deleted file from disk; show a diff instead.
-                  await vscode.commands.executeCommand(
-                    'vscode.diff',
-                    createUri('HEAD', oldPath || openPath),
-                    createUri('EMPTY', openPath),
-                    `${path.basename(openPath)} (${status})`,
-                    { viewColumn: vscode.ViewColumn.Active, preview: false }
-                  );
+                  // Can't open a deleted file from disk; open the last committed content.
+                  const uri = createUri('HEAD', oldPath || openPath);
+                  await openTextOrBinary(uri);
                   this._sendResponse(message.requestId, 'ok');
                   break;
                 }
@@ -1412,8 +1417,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                   }
                 }
 
-                const doc = await vscode.workspace.openTextDocument(fullPath);
-                await vscode.window.showTextDocument(doc, { preview: false, selection });
+                await openTextOrBinary(vscode.Uri.file(fullPath), { selection });
                 this._sendResponse(message.requestId, 'ok');
                 break;
               }
@@ -1428,21 +1432,15 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                 } catch {
                   return false;
                 }
-            const doc = await vscode.workspace.openTextDocument(fullPath);
-                await vscode.window.showTextDocument(doc, { preview: false });
+                await openTextOrBinary(vscode.Uri.file(fullPath));
                 return true;
               };
 
-              // Deleted in the selected commit: no working-tree file to open; show a diff instead.
+              // Deleted in the selected commit: no working-tree file to open; open the last content (base).
               if (effectiveStatus === 'D') {
-                await vscode.commands.executeCommand(
-                  'vscode.diff',
-                  createUri(base, oldPath || openPath),
-                  createUri('EMPTY', openPath),
-                  `${path.basename(openPath)} (${status || 'D'})`,
-                  { viewColumn: vscode.ViewColumn.Active, preview: false }
-                );
-            this._sendResponse(message.requestId, 'ok');
+                const uri = createUri(base, oldPath || openPath);
+                await openTextOrBinary(uri);
+                this._sendResponse(message.requestId, 'ok');
                 break;
               }
 
@@ -1460,24 +1458,12 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               const openRev = effectiveStatus === 'D' ? base : target;
               const openAtPath = effectiveStatus === 'D' ? (oldPath || openPath) : openPath;
               const uri = createUri(openRev, openAtPath);
-              const doc = await vscode.workspace.openTextDocument(uri);
-              await vscode.window.showTextDocument(doc, { preview: false });
+              await openTextOrBinary(uri);
               this._sendResponse(message.requestId, 'ok');
             } catch (err: any) {
               this._outputChannel.appendLine(`file/open failed: ${err?.message || String(err)}`);
-              // Fallback: open a diff if the content provider can't serve the file (e.g. binary, path issues).
-              try {
-                await vscode.commands.executeCommand(
-                  'vscode.diff',
-                  createUri(status.toUpperCase() === 'A' ? 'EMPTY' : base, oldPath || openPath),
-                  createUri(status.toUpperCase() === 'D' ? 'EMPTY' : target, openPath),
-                  `${path.basename(openPath)} (${status || 'diff'})`,
-                  { viewColumn: vscode.ViewColumn.Active, preview: false }
-                );
-                this._sendResponse(message.requestId, 'ok');
-              } catch (err2: any) {
-                this._sendError(message.requestId, 'Failed to open file', err2?.message || String(err2));
-              }
+              // IMPORTANT: never open diffs for file/open; diff is a dedicated action/button.
+              this._sendError(message.requestId, 'Failed to open file', err?.message || String(err));
             }
             break;
           }
