@@ -12,6 +12,7 @@ interface FileTreeProps {
   changes: Change[];
   onFileClick: (change: Change) => void;
   onSecondaryAction?: (change: Change) => void;
+  onRevealInOS?: (change: Change) => void;
   onRevertCommitted?: (changes: Change[]) => void;
   onDiscard?: (paths: string[]) => void;
   selectable?: boolean;
@@ -31,6 +32,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
   changes,
   onFileClick,
   onSecondaryAction,
+  onRevealInOS,
   onRevertCommitted,
   onDiscard,
   selectable,
@@ -235,6 +237,16 @@ export const FileTree: React.FC<FileTreeProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     onSecondaryAction(currentNode.change!);
+                  }}
+                />
+              )}
+              {onRevealInOS && (
+                <span
+                  className="codicon codicon-folder"
+                  title="Reveal in Finder"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRevealInOS(currentNode.change!);
                   }}
                 />
               )}

@@ -425,13 +425,17 @@ const App = () => {
     }
   }, [commits, activeSha, anchorSha, selectedShas, handleSelect]);
 
+  const cancelMoveMode = useCallback(() => {
+    setMoveMode(false);
+    setDraggedShas([]);
+    setDropTargetSha(null);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Alt') setIsOptionPressed(true);
       if (e.key === 'Escape' && moveMode) {
-        setMoveMode(false);
-        setDraggedShas([]);
-        setDropTargetSha(null);
+        cancelMoveMode();
         return;
       }
       handleKeyboardNavigation(e);
@@ -449,7 +453,25 @@ const App = () => {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', () => setIsOptionPressed(false));
     };
-  }, [handleKeyboardNavigation, moveMode]);
+  }, [handleKeyboardNavigation, moveMode, cancelMoveMode]);
+
+  // Allow extension host to cancel move mode (equivalent to pressing Escape).
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const msg = event.data;
+      if (msg?.type === 'ui/escape') {
+        if (moveMode) cancelMoveMode();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [moveMode, cancelMoveMode]);
+
+  // Tell extension host when move mode is active so it can cancel on outside clicks.
+  useEffect(() => {
+    const requestId = `ui-moveMode-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    vscode.postMessage({ type: 'ui/moveMode', requestId, payload: { active: moveMode } });
+  }, [moveMode]);
 
   const handleContextMenu = (sha: string, x: number, y: number) => {
     // If right-clicking outside current selection, switch to single selection for predictable actions.
@@ -461,19 +483,21 @@ const App = () => {
     setContextMenu({ sha, x, y });
   };
 
-  const gitAction = async (type: string, payload: any) => {
+  const gitAction = async <T = any>(type: string, payload: any): Promise<T | undefined> => {
     if (actionStatus[type] === 'running') return;
     setActionStatus(prev => ({ ...prev, [type]: 'running' }));
     try {
-      await request(type, payload);
+      const res = await request<T>(type, payload);
       refresh();
       setActionStatus(prev => ({ ...prev, [type]: 'success' }));
       window.setTimeout(() => {
         setActionStatus(prev => ({ ...prev, [type]: 'idle' }));
       }, 900);
+      return res;
     } catch (err: any) {
       // Errors are handled by the extension host showing messages
       setActionStatus(prev => ({ ...prev, [type]: 'idle' }));
+      return undefined;
     }
   };
 
@@ -919,23 +943,32 @@ const App = () => {
                     icon: moveMode ? 'codicon-check' : 'codicon-move',
                     onClick: () => setMoveMode(v => !v)
                   },
-                  { separator: true },
                   {
                     label: 'Revert',
                     icon: 'codicon-reply',
                     onClick: () => gitAction('git/revert', { shas: contextShas })
                   },
+                  { separator: true },
                   {
                     label: 'Cherry-pick',
                     icon: 'codicon-merge-into',
                     onClick: () => gitAction('git/cherryPick', { shas: orderedForCherryPick })
                   },
                   { separator: true },
-                  { label: 'Rename', icon: 'codicon-edit', disabled: true },
-                  { label: 'Reset Soft', icon: 'codicon-history', disabled: true },
-                  { label: 'Checkout', icon: 'codicon-git-branch', disabled: true },
-                  { label: 'Reset Hard', icon: 'codicon-warning', danger: true, disabled: true },
-                  { label: 'New Branch...', icon: 'codicon-git-branch-create', disabled: true }
+                  {
+                    label: 'Drop…',
+                    icon: 'codicon-trash',
+                    danger: true,
+                    onClick: async () => {
+                      const res = await gitAction<{ newHead?: string }>('git/drop', { shas: contextShas });
+                      const newHead = res?.newHead;
+                      if (newHead) {
+                        setSelectedShas([newHead]);
+                        setAnchorSha(newHead);
+                        setActiveSha(newHead);
+                      }
+                    }
+                  },
                 ];
               }
 
@@ -968,21 +1001,43 @@ const App = () => {
                   icon: 'codicon-reply',
                   onClick: () => gitAction('git/revert', { shas: [singleSha] })
                 },
+                { separator: true },
                 {
                   label: 'Cherry-pick',
                   icon: 'codicon-merge-into',
                   onClick: () => gitAction('git/cherryPick', { shas: [singleSha] })
                 },
-                ...(hasMulti ? [{
-                label: 'Squash…',
-                icon: 'codicon-combine',
-                  onClick: () => gitAction('git/squash', { shas: contextShas })
-                }] : []),
                 { separator: true },
-                { label: 'Reset Soft', icon: 'codicon-history', onClick: () => gitAction('git/reset', { sha: singleSha, mode: 'soft' }) },
-                { label: 'Checkout', icon: 'codicon-git-branch', onClick: () => gitAction('git/checkout', { sha: singleSha }) },
-                { label: 'Reset Hard', icon: 'codicon-warning', onClick: () => gitAction('git/reset', { sha: singleSha, mode: 'hard' }), danger: true },
-                { label: 'New Branch...', icon: 'codicon-git-branch-create', onClick: () => gitAction('git/branchCreate', { sha: singleSha }) }
+                {
+                  label: 'New Branch…',
+                  icon: 'codicon-git-branch-create',
+                  tone: 'warning' as const,
+                  onClick: async () => { await gitAction('git/branchCreate', { sha: singleSha }); }
+                },
+                {
+                  label: 'Checkout commit',
+                  icon: 'codicon-git-branch',
+                  tone: 'warning' as const,
+                  onClick: async () => { await gitAction('git/checkout', { sha: singleSha }); }
+                },
+                { separator: true },
+                { label: 'Reset Soft', icon: 'codicon-history', tone: 'success' as const, onClick: async () => { await gitAction('git/reset', { sha: singleSha, mode: 'soft' }); } },
+                { label: 'Reset Hard', icon: 'codicon-warning', onClick: async () => { await gitAction('git/reset', { sha: singleSha, mode: 'hard' }); }, danger: true },
+                { separator: true },
+                {
+                  label: 'Drop…',
+                  icon: 'codicon-trash',
+                  danger: true,
+                  onClick: async () => {
+                    const res = await gitAction<{ newHead?: string }>('git/drop', { shas: [singleSha] });
+                    const newHead = res?.newHead;
+                    if (newHead) {
+                      setSelectedShas([newHead]);
+                      setAnchorSha(newHead);
+                      setActiveSha(newHead);
+                    }
+                  }
+                }
               ];
             })()
           ]}
