@@ -18,6 +18,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
   const [showFullMessage, setShowFullMessage] = useState(false);
   const commitBoxRef = useRef<HTMLDivElement | null>(null);
   const [isOptionPressed, setIsOptionPressed] = useState(false);
+  const [collapsedFoldersByKey, setCollapsedFoldersByKey] = useState<Map<string, Set<string>>>(() => new Map());
 
   if (!sha) return <div style={{ padding: '16px', opacity: 0.6 }}>Select a commit to see details</div>;
 
@@ -176,6 +177,47 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
   const isUncommitted = details?.sha === 'UNCOMMITTED';
   const allFilePaths = isUncommitted ? changes.map(c => c.path) : [];
   const hasExtendedMessage = !!details && !isUncommitted && details.message.trim() !== details.subject.trim();
+  const fileTreeStateKey = details?.sha ? `details:${details.sha}` : 'details:';
+  const collapsedFolders = collapsedFoldersByKey.get(fileTreeStateKey) ?? new Set<string>();
+  const setCollapsedFolders = (next: Set<string>) => {
+    setCollapsedFoldersByKey(prev => {
+      const m = new Map(prev);
+      m.set(fileTreeStateKey, next);
+      return m;
+    });
+  };
+
+  const folderPathsForCurrentChanges = useMemo(() => {
+    const folders = new Set<string>();
+    for (const c of changes) {
+      const parts = c.path.split('/').filter(Boolean);
+      if (parts.length <= 1) continue;
+      let current = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current ? `${current}/${parts[i]}` : parts[i];
+        folders.add(current);
+      }
+    }
+    return folders;
+  }, [changes]);
+
+  const allFoldersCollapsed = useMemo(() => {
+    if (folderPathsForCurrentChanges.size === 0) return false;
+    for (const folder of folderPathsForCurrentChanges) {
+      if (!collapsedFolders.has(folder)) return false;
+    }
+    return true;
+  }, [collapsedFolders, folderPathsForCurrentChanges]);
+
+  const toggleCollapseAllFolders = () => {
+    // Toggle between fully collapsed and fully expanded.
+    if (folderPathsForCurrentChanges.size === 0) return;
+    if (allFoldersCollapsed) {
+      setCollapsedFolders(new Set());
+    } else {
+      setCollapsedFolders(new Set(folderPathsForCurrentChanges));
+    }
+  };
 
   // Collapse the full message when switching commits.
   useEffect(() => {
@@ -426,14 +468,27 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
             )}
             <div className="changed-files-header">
               <div className="changed-files-title">Changed Files</div>
-              {isUncommitted && (
+              {(isUncommitted || folderPathsForCurrentChanges.size > 0) && (
                 <div className="changed-files-actions">
-                  <button className="toolbar-button secondary" onClick={selectAll} disabled={allFilePaths.length === 0}>
-                    Select all
-                  </button>
-                  <button className="toolbar-button secondary" onClick={clearSelection} disabled={selectedPaths.size === 0}>
-                    Clear
-                  </button>
+                  {isUncommitted ? (
+                    <>
+                      <button className="toolbar-button secondary" onClick={selectAll} disabled={allFilePaths.length === 0}>
+                        Select all
+                      </button>
+                      <button className="toolbar-button secondary" onClick={clearSelection} disabled={selectedPaths.size === 0}>
+                        Clear
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="toolbar-button secondary"
+                      onClick={toggleCollapseAllFolders}
+                      disabled={folderPathsForCurrentChanges.size === 0}
+                      title={allFoldersCollapsed ? 'Expand all folders' : 'Collapse all folders'}
+                    >
+                      {allFoldersCollapsed ? 'Expand' : 'Collapse'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -448,6 +503,8 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
               multiSelect={!isUncommitted}
               selectedPaths={isUncommitted ? selectedPaths : revertSelectedPaths}
               onToggleSelect={isUncommitted ? toggleSelect : toggleRevertSelect}
+              collapsedFolders={collapsedFolders}
+              onCollapsedFoldersChange={setCollapsedFolders}
             />
           </div>
         </>

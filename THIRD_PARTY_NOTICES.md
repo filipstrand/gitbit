@@ -10,6 +10,8 @@ This project bundles third-party assets under their respective licenses.
 
 If you believe any bundled icon has different licensing requirements, please open an issue with the icon filename and its upstream source.
 
+
+
 ## Lucide (generic file / folder icons)
 
 - **Source**: Lucide — `https://lucide.dev/`

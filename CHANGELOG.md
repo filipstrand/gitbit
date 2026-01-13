@@ -5,6 +5,8 @@
 - Native UI: Replaced checkboxes with native-styled VS Code checkboxes for a more integrated feel.
 - Icon Refresh: Replaced all language/tool icons with Devicon (colorful) and generic file/folder icons with Lucide (clean line art).
 - Button Styling: Updated "Commit", "Amend", and "Squash" buttons to be more muted and blend better with the VS Code UI.
+- File tree UX: Folder collapse/expand state is preserved per view (committed details + squash preview) across selection/refresh.
+- File list UX: Added a Collapse/Expand-all toggle in Squash Preview to quickly collapse or expand folders.
 
 ## 0.2.2
 

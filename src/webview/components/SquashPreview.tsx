@@ -12,6 +12,7 @@ export const SquashPreview: React.FC<SquashPreviewProps> = ({ shas, commits }) =
   const [changes, setChanges] = useState<Change[]>([]);
   const [loading, setLoading] = useState(false);
   const [rangeInfo, setRangeInfo] = useState<{ base: string, target: string } | null>(null);
+  const [collapsedFoldersByKey, setCollapsedFoldersByKey] = useState<Map<string, Set<string>>>(() => new Map());
 
   const fetch = useCallback(async (silent = false) => {
     if (shas.length < 2) return;
@@ -108,6 +109,47 @@ export const SquashPreview: React.FC<SquashPreviewProps> = ({ shas, commits }) =
     });
   };
 
+  const squashKey = `squash:${shas.slice().sort().join('|')}`;
+  const collapsedFolders = collapsedFoldersByKey.get(squashKey) ?? new Set<string>();
+  const setCollapsedFolders = (next: Set<string>) => {
+    setCollapsedFoldersByKey(prev => {
+      const m = new Map(prev);
+      m.set(squashKey, next);
+      return m;
+    });
+  };
+
+  const folderPathsForCurrentChanges = React.useMemo(() => {
+    const folders = new Set<string>();
+    for (const c of changes) {
+      const parts = c.path.split('/').filter(Boolean);
+      if (parts.length <= 1) continue;
+      let current = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current ? `${current}/${parts[i]}` : parts[i];
+        folders.add(current);
+      }
+    }
+    return folders;
+  }, [changes]);
+
+  const allFoldersCollapsed = React.useMemo(() => {
+    if (folderPathsForCurrentChanges.size === 0) return false;
+    for (const folder of folderPathsForCurrentChanges) {
+      if (!collapsedFolders.has(folder)) return false;
+    }
+    return true;
+  }, [collapsedFolders, folderPathsForCurrentChanges]);
+
+  const toggleCollapseAllFolders = () => {
+    if (folderPathsForCurrentChanges.size === 0) return;
+    if (allFoldersCollapsed) {
+      setCollapsedFolders(new Set());
+    } else {
+      setCollapsedFolders(new Set(folderPathsForCurrentChanges));
+    }
+  };
+
   return (
     <div className="squash-preview" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="details-header" style={{ padding: '16px 16px 12px 16px', borderBottom: '1px solid var(--vscode-panel-border)' }}>
@@ -131,14 +173,27 @@ export const SquashPreview: React.FC<SquashPreviewProps> = ({ shas, commits }) =
           <div style={{ padding: '16px' }}>Computing squash preview...</div>
         ) : (
           <>
-            <div style={{ padding: '16px 12px 8px 12px', fontWeight: 'bold', fontSize: '11px', color: 'var(--vscode-descriptionForeground)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Combined Changes
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 12px 8px 12px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '11px', color: 'var(--vscode-descriptionForeground)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Combined Changes
+              </div>
+              <button
+                className="toolbar-button secondary"
+                style={{ padding: '3px 10px', height: '24px' }}
+                onClick={toggleCollapseAllFolders}
+                disabled={folderPathsForCurrentChanges.size === 0}
+                title={allFoldersCollapsed ? 'Expand all folders' : 'Collapse all folders'}
+              >
+                {allFoldersCollapsed ? 'Expand' : 'Collapse'}
+              </button>
             </div>
             <FileTree 
               changes={changes} 
               onFileClick={handleFileClick} 
               onSecondaryAction={handleFileDiff}
               onRevealInOS={handleRevealInOS}
+              collapsedFolders={collapsedFolders}
+              onCollapsedFoldersChange={setCollapsedFolders}
             />
           </>
         )}

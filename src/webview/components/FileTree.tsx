@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Change } from '../../extension/protocol/types';
 import { iconTheme } from '../state/iconTheme';
 import { LucideIcon } from './LucideIcon';
@@ -20,6 +20,13 @@ interface FileTreeProps {
   multiSelect?: boolean;
   selectedPaths?: Set<string>;
   onToggleSelect?: (path: string, selected: boolean) => void;
+  /**
+   * Folder expansion state is modeled as a "collapsed set".
+   * If a folder path is present in `collapsedFolders`, it is collapsed; otherwise it's expanded.
+   * If omitted, FileTree will manage its own collapsed state.
+   */
+  collapsedFolders?: Set<string>;
+  onCollapsedFoldersChange?: (next: Set<string>) => void;
 }
 
 interface TreeNode {
@@ -39,7 +46,9 @@ export const FileTree: React.FC<FileTreeProps> = ({
   selectable,
   multiSelect,
   selectedPaths,
-  onToggleSelect
+  onToggleSelect,
+  collapsedFolders,
+  onCollapsedFoldersChange
 }) => {
   const changeByPath = useMemo(() => {
     const map = new Map<string, Change>();
@@ -78,21 +87,40 @@ export const FileTree: React.FC<FileTreeProps> = ({
     return { root: rootNode, allPaths: paths };
   }, [changes]);
 
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState<Set<string>>(new Set());
+  const isControlled = !!onCollapsedFoldersChange;
+  const collapsed = collapsedFolders ?? uncontrolledCollapsed;
 
+  // Prune collapsed entries that no longer exist in the current tree.
+  // This keeps state stable across refreshes while avoiding growth over time.
   useEffect(() => {
-    setExpandedFolders(allPaths);
+    const current = collapsed ?? new Set<string>();
+    const pruned = new Set<string>();
+    for (const p of current) {
+      if (allPaths.has(p)) pruned.add(p);
+    }
+    if (pruned.size === current.size) return;
+    if (isControlled && onCollapsedFoldersChange) {
+      onCollapsedFoldersChange(pruned);
+    } else {
+      setUncontrolledCollapsed(pruned);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allPaths]);
+
+  const setCollapsed = (next: Set<string>) => {
+    if (isControlled && onCollapsedFoldersChange) onCollapsedFoldersChange(next);
+    else setUncontrolledCollapsed(next);
+  };
 
   const toggleFolder = (path: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const next = new Set(expandedFolders);
-    if (next.has(path)) {
-      next.delete(path);
-    } else {
-      next.add(path);
-    }
-    setExpandedFolders(next);
+    const next = new Set(collapsed);
+    // root is always expanded
+    if (path === 'root') return;
+    if (next.has(path)) next.delete(path);
+    else next.add(path);
+    setCollapsed(next);
   };
 
   const getFileIcon = (
@@ -141,7 +169,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
       }
     }
 
-    const isExpanded = expandedFolders.has(currentNode.path);
+    const isExpanded = currentNode.path === 'root' ? true : !collapsed.has(currentNode.path);
     const sortedChildren = Array.from(currentNode.children.values()).sort((a, b) => {
       const aIsFolder = a.children.size > 0;
       const bIsFolder = b.children.size > 0;
