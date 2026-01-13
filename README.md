@@ -29,11 +29,12 @@ GitBit provides a lightweight and performant way to visualize your repository's 
 
 ### Installation
 
-1. Download the latest `.vsix` from the [Releases](https://github.com/filipstrand/gitbit/releases) page.
-2. Open Cursor or VS Code.
-3. Install the `.vsix` file:
-   - **Method 1**: Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`), type **"Extensions: Install from VSIX..."**, and select your downloaded file.
-   - **Method 2**: Open the Extensions view (`Cmd+Shift+X`), click the `...` (Views and More Actions) in the top right, and select **Install from VSIX...**.
+- **Marketplace (recommended)**: Open the Extensions marketplace in Cursor or VS Code, search for **GitBit**, and click **Install**.
+- **Manual (.vsix)**:
+  1. Download the latest `.vsix` from the [Releases](https://github.com/filipstrand/gitbit/releases) page.
+  2. Open Cursor or VS Code.
+  3. Install the `.vsix` file:
+     - **Method 1**: Open the Command Palette, type **"Extensions: Install from VSIX..."**, and select your downloaded file.
 
 ### Usage
 
