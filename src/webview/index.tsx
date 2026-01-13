@@ -1037,6 +1037,9 @@ const App = () => {
                   ]
                 }] : []),
                 { separator: true },
+                // Reset Soft is a safe-ish "green" action; keep it above branch/checkout actions.
+                { label: 'Reset Soft', icon: 'codicon-history', tone: 'success' as const, onClick: async () => { await gitAction('git/reset', { sha: singleSha, mode: 'soft' }); } },
+                { separator: true },
                 {
                   label: 'New Branch…',
                   icon: 'codicon-git-branch-create',
@@ -1050,7 +1053,6 @@ const App = () => {
                   onClick: async () => { await gitAction('git/checkout', { sha: singleSha }); }
                 },
                 { separator: true },
-                { label: 'Reset Soft', icon: 'codicon-history', tone: 'success' as const, onClick: async () => { await gitAction('git/reset', { sha: singleSha, mode: 'soft' }); } },
                 { label: 'Reset Hard', icon: 'codicon-warning', onClick: async () => { await gitAction('git/reset', { sha: singleSha, mode: 'hard' }); }, danger: true },
                 { separator: true },
                 {

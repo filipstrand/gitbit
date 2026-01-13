@@ -1778,6 +1778,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             {
               const commitMessage = String(message.payload?.message || '').trim();
               const amend = !!message.payload?.amend;
+              const noVerify = !!message.payload?.noVerify;
               const selectedPaths = Array.isArray(message.payload?.paths)
                 ? (message.payload.paths as any[]).map(p => String(p)).filter(p => p.length > 0)
                 : undefined;
@@ -1793,10 +1794,13 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               }
 
               const commitArgs = (opts?: { noEdit?: boolean }) => {
-                if (!amend) return ['commit', '-m', commitMessage];
-                if (commitMessage) return ['commit', '--amend', '-m', commitMessage];
-                if (opts?.noEdit) return ['commit', '--amend', '--no-edit'];
-                return ['commit', '--amend', '--no-edit'];
+                const base: string[] = ['commit'];
+                if (noVerify) base.push('--no-verify');
+
+                if (!amend) return [...base, '-m', commitMessage];
+                if (commitMessage) return [...base, '--amend', '-m', commitMessage];
+                if (opts?.noEdit) return [...base, '--amend', '--no-edit'];
+                return [...base, '--amend', '--no-edit'];
               };
 
               const parsePorcelainPaths = (stdout: string) => {
@@ -1860,7 +1864,10 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                 const shouldAmend = dirtyPaths.some(p => isPathSelected(p));
                 if (shouldAmend) {
                   await this._gitRunner.run(['add', '-A', '--', ...selectedPaths]);
-                await this._gitRunner.run(['commit', '--amend', '--no-edit']);
+                  const amendArgs = ['commit'];
+                  if (noVerify) amendArgs.push('--no-verify');
+                  amendArgs.push('--amend', '--no-edit');
+                  await this._gitRunner.run(amendArgs);
                   this._outputChannel.appendLine('Hooks modified selected files; automatically amended them into the commit.');
                 }
 
@@ -2684,9 +2691,10 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
       if (e.focused) notify('focus');
     }));
 
-    // If the user clicks in an editor while commits are in "move mode", treat it as Escape (cancel move mode).
+    // If the user clicks in an editor, treat it as Escape in the webview.
+    // Used to cancel transient UI states (e.g. move mode, commit error banner).
     this._disposables.push(vscode.window.onDidChangeTextEditorSelection(e => {
-      if (!this._moveModeActive) return;
+      if (!this._view?.visible) return;
       if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
       this._view?.webview.postMessage({ type: 'ui/escape' });
     }));

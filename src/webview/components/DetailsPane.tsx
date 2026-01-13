@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCommitDetails } from '../state/useCommitDetails';
 import { FileTree } from './FileTree';
 import { Change } from '../../extension/protocol/types';
@@ -16,12 +16,35 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
   const [commitSubmitting, setCommitSubmitting] = useState(false);
   const [commitError, setCommitError] = useState<{ title: string; details?: string } | null>(null);
   const [showFullMessage, setShowFullMessage] = useState(false);
+  const commitBoxRef = useRef<HTMLDivElement | null>(null);
+  const [isOptionPressed, setIsOptionPressed] = useState(false);
 
   if (!sha) return <div style={{ padding: '16px', opacity: 0.6 }}>Select a commit to see details</div>;
 
-  const performCommit = async (opts?: { amend?: boolean }) => {
+  // Track Option/Alt for "commit without checks" affordance.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setIsOptionPressed(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setIsOptionPressed(false);
+    };
+    const onBlur = () => setIsOptionPressed(false);
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  const performCommit = async (opts?: { amend?: boolean; noVerify?: boolean }) => {
     if (commitSubmitting) return;
     const amend = !!opts?.amend;
+    const noVerify = !!opts?.noVerify;
     const message = commitMessage.trim();
     if (!amend && !message) return;
 
@@ -31,7 +54,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     setCommitSubmitting(true);
     setCommitError(null);
     try {
-      await request('git/commit', { message, paths, amend });
+      await request('git/commit', { message, paths, amend, noVerify });
       setCommitMessage('');
       setSelectedPaths(new Set());
     } catch (e: any) {
@@ -179,6 +202,34 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uncommittedChangesKey]);
 
+  // When a commit fails (often due to hooks), let the user copy the error, but clear the red state
+  // as soon as they click anywhere outside the commit box or click outside the webview (host sends ui/escape).
+  useEffect(() => {
+    if (!commitError) return;
+
+    const onMouseDownCapture = (e: MouseEvent) => {
+      const box = commitBoxRef.current;
+      if (!box) return;
+      if (!(e.target instanceof Node)) return;
+      if (box.contains(e.target)) return;
+      setCommitError(null);
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      const msg = event.data;
+      if (msg?.type === 'ui/escape') {
+        setCommitError(null);
+      }
+    };
+
+    window.addEventListener('mousedown', onMouseDownCapture, true);
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('mousedown', onMouseDownCapture, true);
+      window.removeEventListener('message', onMessage);
+    };
+  }, [commitError]);
+
   const selectAll = () => setSelectedPaths(new Set(allFilePaths));
   const clearSelection = () => setSelectedPaths(new Set());
   const toggleSelect = (path: string, selected: boolean) => {
@@ -204,7 +255,8 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     return 'No files selected';
   }, [selectedPaths.size]);
 
-  const handleCommitClick = () => {
+  const handleCommitClick = (e?: React.MouseEvent) => {
+    const noVerify = !!e?.altKey;
     // UX: if the user typed a message but forgot to select files, first click selects all,
     // second click commits.
     if (selectedPaths.size === 0) {
@@ -213,17 +265,18 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
       selectAll();
       return;
     }
-    performCommit();
+    performCommit({ noVerify });
   };
 
-  const handleAmendClick = () => {
+  const handleAmendClick = (e?: React.MouseEvent) => {
+    const noVerify = !!e?.altKey;
     // Same UX for amend (message optional): first click selects all if nothing is selected.
     if (selectedPaths.size === 0) {
       if (allFilePaths.length === 0) return;
       selectAll();
       return;
     }
-    performCommit({ amend: true });
+    performCommit({ amend: true, noVerify });
   };
 
   const hasCommitBox = isUncommitted || (hasExtendedMessage && showFullMessage);
@@ -304,7 +357,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
           </div>
           <div className="details-body" style={{ flex: 1, overflowY: 'auto' }}>
             {isUncommitted ? (
-              <div className="commit-box-container">
+              <div className="commit-box-container" ref={commitBoxRef}>
                 <textarea
                   className={`commit-message-input ${commitError ? 'has-error' : ''}`}
                   placeholder="Commit message..."
@@ -342,16 +395,23 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
                     className={`toolbar-button commit-button ${commitError ? 'has-error' : ''}`}
                     onClick={handleCommitClick}
                     disabled={!commitMessage.trim() || commitSubmitting || allFilePaths.length === 0}
+                    title={isOptionPressed ? 'Commit selected files (without checks)' : 'Commit selected files'}
                   >
-                    {commitSubmitting ? 'Committing…' : 'Commit'}
+                    {commitSubmitting
+                      ? 'Committing…'
+                      : (isOptionPressed ? 'Commit (without checks)' : 'Commit')}
                   </button>
                   <button
                     className="toolbar-button commit-button amend-button"
                     onClick={handleAmendClick}
                     disabled={commitSubmitting || allFilePaths.length === 0}
-                    title={commitMessage.trim() ? 'Amend last commit (update message and include staged changes)' : 'Amend last commit (keep message and include staged changes)'}
+                    title={isOptionPressed
+                      ? 'Amend last commit (without checks)'
+                      : (commitMessage.trim()
+                        ? 'Amend last commit (update message and include staged changes)'
+                        : 'Amend last commit (keep message and include staged changes)')}
                   >
-                    Amend
+                    {isOptionPressed ? 'Amend (without checks)' : 'Amend'}
                   </button>
                 </div>
               </div>
