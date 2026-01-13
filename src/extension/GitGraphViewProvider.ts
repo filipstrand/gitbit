@@ -1205,6 +1205,10 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             let currentBranchForPush: string | undefined;
             let defaultRemoteForPush: string | undefined;
             let hasUpstreamForPush: boolean | undefined;
+            let trackingBranchForPush: string | undefined;
+            let isUpToDateWithUpstream = false;
+            let tagsToPushOnly: string[] | null = null;
+            let remoteForTagsOnly: string | undefined;
 
             const branchRes = await this._gitRunner.run(['rev-parse', '--abbrev-ref', 'HEAD']);
             if (branchRes.exitCode === 0) {
@@ -1240,6 +1244,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               hasUpstreamForPush = trackingRes.exitCode === 0;
               if (trackingRes.exitCode === 0) {
                 const trackingBranch = trackingRes.stdout.trim();
+                trackingBranchForPush = trackingBranch;
+                remoteForTagsOnly = trackingBranch.includes('/') ? trackingBranch.split('/')[0] : defaultRemoteForPush;
                 // Get commits ahead of remote
                 const aheadRes = await this._gitRunner.run(['log', '--oneline', `${trackingBranch}..HEAD`]);
                 if (aheadRes.exitCode === 0) {
@@ -1250,6 +1256,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                     const prefix = isForce ? 'FORCE PUSHING' : 'Pushing';
                     pushMessage = `${prefix} ${aheadCommits.length} commit(s) to ${trackingBranch}:\n\n${commitList}${extraCount}\n\nAre you sure?`;
                   } else if (!isForce) {
+                    isUpToDateWithUpstream = true;
                     pushMessage = `Your branch is up to date with ${trackingBranch}. Push anyway?`;
                   }
                 }
@@ -1261,27 +1268,96 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               return;
             }
 
-            const confirmPush = await vscode.window.showWarningMessage(
-              pushMessage,
-              { modal: true },
-              isForce ? 'Force Push' : 'Push'
-            );
-            if (confirmPush !== (isForce ? 'Force Push' : 'Push')) {
-              this._sendError(message.requestId, 'Push cancelled');
-              return;
+            // If there are no commits to push but there are local tags missing on the remote,
+            // offer a "push tags only" path (common when users create a tag on an already-synced branch).
+            if (!isForce && isUpToDateWithUpstream && remoteForTagsOnly) {
+              const listLocalTagsRes = await this._gitRunner.run(['tag', '--list']);
+              const localTags = listLocalTagsRes.exitCode === 0
+                ? listLocalTagsRes.stdout.split('\n').map(t => t.trim()).filter(Boolean)
+                : [];
+
+              // Remote tags can be large; keep this reasonably tolerant.
+              const remoteTagsRes = await this._gitRunner.run(['ls-remote', '--tags', '--refs', remoteForTagsOnly], 60000);
+              const remoteTags = remoteTagsRes.exitCode === 0
+                ? remoteTagsRes.stdout
+                    .split('\n')
+                    .map(l => l.trim())
+                    .filter(Boolean)
+                    .map(l => l.split('\t')[1] || '')
+                    .filter(ref => ref.startsWith('refs/tags/'))
+                    .map(ref => ref.substring('refs/tags/'.length))
+                : [];
+
+              const remoteSet = new Set(remoteTags);
+              const missingTags = localTags.filter(t => !remoteSet.has(t));
+
+              if (missingTags.length > 0) {
+                const detail =
+                  missingTags.length <= 12
+                    ? missingTags.join('\n')
+                    : `${missingTags.slice(0, 12).join('\n')}\n… and ${missingTags.length - 12} more`;
+
+                const pick = await vscode.window.showWarningMessage(
+                  `Your branch is up to date with ${trackingBranchForPush}.`,
+                  { modal: true, detail: `${missingTags.length} local tag(s) are not on ${remoteForTagsOnly}.\n\n${detail}` },
+                  'Push tags',
+                  'Choose tags…',
+                  'Push anyway'
+                );
+
+                if (pick === 'Push tags') {
+                  tagsToPushOnly = missingTags;
+                } else if (pick === 'Choose tags…') {
+                  const chosen = await vscode.window.showQuickPick(missingTags, {
+                    title: 'Push Tag(s)',
+                    placeHolder: `Select tag(s) to push to ${remoteForTagsOnly}`,
+                    canPickMany: true,
+                    ignoreFocusOut: true
+                  });
+                  if (chosen && chosen.length > 0) {
+                    tagsToPushOnly = chosen;
+                  } else {
+                    this._sendError(message.requestId, 'Push cancelled');
+                    return;
+                  }
+                } else if (pick === 'Push anyway') {
+                  // fall through to normal push (which will likely be a no-op for commits, but may push follow-tags).
+                } else {
+                  this._sendError(message.requestId, 'Push cancelled');
+                  return;
+                }
+              }
+            }
+
+            if (!tagsToPushOnly) {
+              const confirmPush = await vscode.window.showWarningMessage(
+                pushMessage,
+                { modal: true },
+                isForce ? 'Force Push' : 'Push'
+              );
+              if (confirmPush !== (isForce ? 'Force Push' : 'Push')) {
+                this._sendError(message.requestId, 'Push cancelled');
+                return;
+              }
             }
 
             this._outputChannel.appendLine(isForce ? 'Force pushing changes...' : 'Pushing changes...');
-            // Include tags by default (safe variant: pushes annotated tags reachable from the pushed commits).
-            const pushArgs = ['push', '--follow-tags'];
-            if (isForce) pushArgs.push('--force-with-lease');
-            
-            const shouldSetUpstream = hasUpstreamForPush === false;
-            const effectivePushArgs = shouldSetUpstream
-              ? [...pushArgs, '--set-upstream', String(defaultRemoteForPush), String(currentBranchForPush)]
-              : pushArgs;
+            let pushRes;
+            if (tagsToPushOnly && remoteForTagsOnly) {
+              const tagRefs = tagsToPushOnly.map(t => `refs/tags/${t}`);
+              pushRes = await this._gitRunner.run(['push', remoteForTagsOnly, ...tagRefs], 60000);
+            } else {
+              // Include tags by default (safe variant: pushes annotated tags reachable from the pushed commits).
+              const pushArgs = ['push', '--follow-tags'];
+              if (isForce) pushArgs.push('--force-with-lease');
+              
+              const shouldSetUpstream = hasUpstreamForPush === false;
+              const effectivePushArgs = shouldSetUpstream
+                ? [...pushArgs, '--set-upstream', String(defaultRemoteForPush), String(currentBranchForPush)]
+                : pushArgs;
 
-            const pushRes = await this._gitRunner.run(effectivePushArgs);
+              pushRes = await this._gitRunner.run(effectivePushArgs);
+            }
 
             if (pushRes.exitCode === 0) {
               this._notifyRepoChanged('push');
