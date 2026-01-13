@@ -438,13 +438,33 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               }
               return;
             }
-            const changesResult = await this._gitRunner.run([
-              'show',
+            // Use diff-tree (instead of `git show`) so merge commits reliably return changed files.
+            // For merge commits, show changes against the first parent (what you typically want when inspecting a merge).
+            const sha = String(message.payload.sha || '');
+            const parentsRes = await this._gitRunner.run(['rev-list', '--parents', '-n', '1', sha]);
+            const toks = parentsRes.exitCode === 0 ? parentsRes.stdout.trim().split(' ').filter(Boolean) : [];
+            const parents = toks.length >= 2 ? toks.slice(1) : [];
+
+            const baseArgs = [
+              'diff-tree',
+              '--no-commit-id',
               '--name-status',
-              '--find-renames',
-              '--pretty=format:',
-              message.payload.sha
-            ]);
+              '-r',
+              '-M', // detect renames
+              '-C', // detect copies
+            ];
+
+            let changesResult;
+            if (parents.length === 0) {
+              // Root commit.
+              changesResult = await this._gitRunner.run([...baseArgs, '--root', sha]);
+            } else if (parents.length === 1) {
+              // Normal commit.
+              changesResult = await this._gitRunner.run([...baseArgs, sha]);
+            } else {
+              // Merge commit: compare first parent -> merge result.
+              changesResult = await this._gitRunner.run([...baseArgs, parents[0], sha]);
+            }
             if (changesResult.exitCode === 0) {
               const changes = this._parseChanges(changesResult.stdout);
               this._sendResponse(message.requestId, changes);
