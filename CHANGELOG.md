@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Native UI: Replaced checkboxes with native-styled VS Code checkboxes for a more integrated feel.
+- Icon Refresh: Replaced all language/tool icons with Devicon (colorful) and generic file/folder icons with Lucide (clean line art).
+- Button Styling: Updated "Commit", "Amend", and "Squash" buttons to be more muted and blend better with the VS Code UI.
+
 ## 0.2.2
 
 - Branch filtering: when filtering on `HEAD` / a branch, show the full merged history (not just `--first-parent`) so merged-in branch commits are visible.

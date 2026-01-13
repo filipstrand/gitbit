@@ -1328,14 +1328,14 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
 
             if (!tagsToPushOnly) {
-              const confirmPush = await vscode.window.showWarningMessage(
-                pushMessage,
-                { modal: true },
-                isForce ? 'Force Push' : 'Push'
-              );
-              if (confirmPush !== (isForce ? 'Force Push' : 'Push')) {
-                this._sendError(message.requestId, 'Push cancelled');
-                return;
+            const confirmPush = await vscode.window.showWarningMessage(
+              pushMessage,
+              { modal: true },
+              isForce ? 'Force Push' : 'Push'
+            );
+            if (confirmPush !== (isForce ? 'Force Push' : 'Push')) {
+              this._sendError(message.requestId, 'Push cancelled');
+              return;
               }
             }
 
@@ -1347,12 +1347,12 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             } else {
               // Include tags by default (safe variant: pushes annotated tags reachable from the pushed commits).
               const pushArgs = ['push', '--follow-tags'];
-              if (isForce) pushArgs.push('--force-with-lease');
-              
-              const shouldSetUpstream = hasUpstreamForPush === false;
-              const effectivePushArgs = shouldSetUpstream
-                ? [...pushArgs, '--set-upstream', String(defaultRemoteForPush), String(currentBranchForPush)]
-                : pushArgs;
+            if (isForce) pushArgs.push('--force-with-lease');
+            
+            const shouldSetUpstream = hasUpstreamForPush === false;
+            const effectivePushArgs = shouldSetUpstream
+              ? [...pushArgs, '--set-upstream', String(defaultRemoteForPush), String(currentBranchForPush)]
+              : pushArgs;
 
               pushRes = await this._gitRunner.run(effectivePushArgs);
             }
@@ -1440,7 +1440,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               if (effectiveStatus === 'D') {
                 const uri = createUri(base, oldPath || openPath);
                 await openTextOrBinary(uri);
-                this._sendResponse(message.requestId, 'ok');
+            this._sendResponse(message.requestId, 'ok');
                 break;
               }
 
