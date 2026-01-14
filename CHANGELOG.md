@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Custom Icon Refresh: Replaced Lucide icons with custom-designed icons for generic files, folders, and specific configuration files (like `.cursorrules`, `makefile`, `yaml`, etc.) for a more unique and polished look.
+- Clean Licensing: Removed Lucide library and updated third-party notices to reflect the new custom icon set.
+
 ## 0.2.3
 
 - Native UI: Replaced checkboxes with native-styled VS Code checkboxes for a more integrated feel.
