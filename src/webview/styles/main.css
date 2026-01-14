@@ -951,49 +951,6 @@ body {
   transition: background-color 90ms ease, box-shadow 90ms ease, opacity 90ms ease;
 }
 
-.lucide-icon {
-  display: inline-block;
-  flex-shrink: 0;
-  color: var(--vscode-icon-foreground);
-  opacity: 0.9;
-}
-
-/* Add some subtle variety for generic icons (theme-aware) */
-.lucide-file-text {
-  color: var(--vscode-charts-blue, var(--vscode-icon-foreground));
-}
-/* Specific overrides for distinguishable text files */
-.ext-md.lucide-file-text { color: #4daafc; } /* Brighter, distinct blue for Markdown */
-.ext-txt.lucide-file-text { color: #bbbbbb; } /* Lighter, muted gray for plain text */
-
-.lucide-file-code {
-
-  
-  color: var(--vscode-charts-purple, var(--vscode-icon-foreground));
-}
-.lucide-file-image {
-  color: var(--vscode-charts-green, var(--vscode-icon-foreground));
-}
-.lucide-file-archive {
-  color: var(--vscode-charts-orange, var(--vscode-icon-foreground));
-}
-.lucide-settings {
-  color: var(--vscode-charts-yellow, var(--vscode-icon-foreground));
-}
-.lucide-lock {
-  color: var(--vscode-charts-red, var(--vscode-icon-foreground));
-}
-
-.lucide-folder, .lucide-folder-open {
-  color: #d1b88a; /* More muted, professional tan-yellow */
-  opacity: 0.9;
-}
-
-/* Optional: Make folder chevron/icon slightly smaller/closer to VS Code feel */
-.file-item .lucide-folder, .file-item .lucide-folder-open {
-  transform: translateY(1px);
-}
-
 .file-actions .codicon:hover,
 .commit-row-actions .codicon:hover {
   background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.14));

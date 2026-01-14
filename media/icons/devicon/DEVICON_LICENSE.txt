@@ -1,7 +1,7 @@
 Devicon
 =======
 
-This project bundles a curated subset of Devicon SVGs under `media/icons/devicon-*.svg`.
+This project bundles a curated subset of Devicon SVGs under `media/icons/devicon/devicon-*.svg`.
 
 Devicon is MIT-licensed (see the Devicon project). Devicon also notes that product names,
 logos, and brands are property of their respective owners and are used for identification

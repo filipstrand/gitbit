@@ -1,7 +1,6 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { Change } from '../../extension/protocol/types';
 import { iconTheme } from '../state/iconTheme';
-import { LucideIcon } from './LucideIcon';
 
 declare global {
   interface Window {
@@ -127,7 +126,6 @@ export const FileTree: React.FC<FileTreeProps> = ({
     fileName: string,
   ):
     | { kind: 'img'; src: string }
-    | { kind: 'lucide'; name: Parameters<typeof LucideIcon>[0]['name']; ext?: string }
     | { kind: 'codicon'; className: string } => {
     const lower = fileName.toLowerCase();
     const ext = (lower.includes('.') ? lower.split('.').pop() : '') ?? '';
@@ -135,20 +133,14 @@ export const FileTree: React.FC<FileTreeProps> = ({
 
     // 1) Exact filename mapping
     const byName = iconTheme.fileNames[lower];
-    if (byName?.startsWith('lucide:')) {
-      return { kind: 'lucide', name: byName.slice('lucide:'.length) as any, ext };
-    }
     if (byName) return { kind: 'img', src: `${base}/${byName}` };
 
     // 2) Extension mapping
     const byExt = iconTheme.fileExtensions[ext];
-    if (byExt?.startsWith('lucide:')) {
-      return { kind: 'lucide', name: byExt.slice('lucide:'.length) as any, ext };
-    }
     if (byExt) return { kind: 'img', src: `${base}/${byExt}` };
 
     // 3) Fallback
-    return { kind: 'lucide', name: 'file', ext };
+    return { kind: 'img', src: `${base}/custom/file.svg` };
   };
 
   const renderNode = (node: TreeNode, depth: number) => {
@@ -224,10 +216,10 @@ export const FileTree: React.FC<FileTreeProps> = ({
           {isFolder ? (
             <>
               <span className={`codicon ${isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} />
-              <LucideIcon
-                name={isExpanded ? 'folder-open' : 'folder'}
-                className={`lucide-icon lucide-${isExpanded ? 'folder-open' : 'folder'}`}
-                style={{ marginRight: '6px' }}
+              <img 
+                src={`${window.iconsUri}/custom/${isExpanded ? 'folder-open.svg' : 'folder.svg'}`}
+                alt="folder"
+                style={{ width: '16px', height: '16px', marginRight: '6px' }}
               />
             </>
           ) : (
@@ -247,20 +239,10 @@ export const FileTree: React.FC<FileTreeProps> = ({
                 const icon = getFileIcon(node.name);
                 if (icon.kind === 'img') {
                   return (
-              <img 
+                    <img 
                       src={icon.src}
-                alt="file" 
-                style={{ width: '16px', height: '16px', marginRight: '6px' }}
-              />
-                  );
-                }
-                if (icon.kind === 'lucide') {
-                  return (
-                    <LucideIcon
-                      name={icon.name}
-                      className={`lucide-icon lucide-${icon.name} ${icon.ext ? `ext-${icon.ext}` : ''}`}
-                      style={{ marginRight: '6px' }}
-                      title="file"
+                      alt="file" 
+                      style={{ width: '16px', height: '16px', marginRight: '6px' }}
                     />
                   );
                 }
