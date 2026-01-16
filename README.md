@@ -22,8 +22,9 @@ GitBit provides a lightweight and performant way to visualize your repository's 
 - **Performance First**: Optimized for repositories of all sizes, with a focus on smooth scrolling and interaction.
 - **Theme-Aware**: Automatically matches your Cursor or VS Code theme.
 
+## 💡 Feature Requests
 
-
+- **Infinite Scroll**: Fetch more than 500 commits automatically when scrolling to the bottom of the graph.
 
 ## 🚀 Getting Started
 
