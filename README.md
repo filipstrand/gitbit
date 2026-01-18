@@ -26,6 +26,7 @@ GitBit provides a lightweight and performant way to visualize your repository's 
 
 - **Infinite Scroll**: Fetch more than 500 commits automatically when scrolling to the bottom of the graph.
 - **Branch Existence Check**: Show a popup notification if trying to create a branch that already exists.
+- **Auto-Rebase on Pull**: Automatically perform a rebase during pull if it can be done safely.
 
 ## 🚀 Getting Started
 
