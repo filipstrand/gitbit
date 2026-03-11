@@ -92,8 +92,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async _discoverRepos(): Promise<RepoInfo[]> {
-    if (this._reposCache) return this._reposCache;
+  private async _discoverRepos(forceRefresh = false): Promise<RepoInfo[]> {
+    if (!forceRefresh && this._reposCache) return this._reposCache;
 
     const folders = vscode.workspace.workspaceFolders || [];
     const seen = new Set<string>();
@@ -218,7 +218,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             break;
           }
           case 'repos/list': {
-            const base = await this._discoverRepos();
+            const force = !!message.payload?.force;
+            const base = await this._discoverRepos(force);
             const enriched = await Promise.all(
               base.map(async r => {
                 const meta = await this._getRepoMeta(r.root);

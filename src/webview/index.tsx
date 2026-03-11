@@ -113,9 +113,9 @@ const App = () => {
     refreshRef.current = refresh;
   }, [refresh]);
 
-  const refreshRepos = useCallback(async () => {
+  const refreshRepos = useCallback(async (force = false) => {
     try {
-      const list = await request<RepoInfo[]>('repos/list');
+      const list = await request<RepoInfo[]>('repos/list', { force });
       setRepos(list);
 
       // If we don't have a saved selection (or it no longer exists), default to first repo.
@@ -488,6 +488,9 @@ const App = () => {
     setActionStatus(prev => ({ ...prev, [type]: 'running' }));
     try {
       const res = await request<T>(type, payload);
+      if (type === 'git/fetch') {
+        await refreshRepos(true);
+      }
       refresh();
       setActionStatus(prev => ({ ...prev, [type]: 'success' }));
       window.setTimeout(() => {
