@@ -413,13 +413,18 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
           case 'commit/changes':
             if (!this._gitRunner) return;
             if (message.payload.sha === GitGraphViewProvider.UNCOMMITTED_SHA) {
-              const statusRes = await this._gitRunner.run(['status', '--porcelain', '--find-renames']);
+              const statusRes = await this._gitRunner.run([
+                'status',
+                '--porcelain',
+                '--find-renames',
+                '--untracked-files=all'
+              ]);
               if (statusRes.exitCode === 0) {
                 const changes = statusRes.stdout.split('\n')
                   .filter(l => l.trim().length > 0)
                   .map(line => {
                     const status = line.substring(0, 2).trim();
-                    const rest = line.substring(3).trim();
+                    const rest = line.substring(3).trim().replace(/\/+$/, '');
                     if (status.startsWith('R')) {
                       const [oldPath, newPath] = rest.split(' -> ');
                       return { status: 'R' as const, oldPath, path: newPath };
