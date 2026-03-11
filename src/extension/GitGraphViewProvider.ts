@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { GitRunner } from './git/GitRunner';
 import { GitLogParser } from './git/GitLogParser';
+import { getDefaultSquashTitle, parseUncommittedChangesFromPorcelain } from './git/changeParsing';
 import { RequestMessage, ResponseMessage, RepoInfo } from './protocol/types';
 import { GitContentProvider } from './git/GitContentProvider';
 
@@ -421,21 +422,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                 '--untracked-files=all'
               ]);
               if (statusRes.exitCode === 0) {
-                const changes = statusRes.stdout.split('\n')
-                  .filter(l => l.trim().length > 0)
-                  .map(line => {
-                    const status = line.substring(0, 2).trim();
-                    const rest = line.substring(3).trim().replace(/\/+$/, '');
-                    if (status.startsWith('R')) {
-                      const [oldPath, newPath] = rest.split(' -> ');
-                      return { status: 'R' as const, oldPath, path: newPath };
-                    }
-                    // Porcelain status is XY, we just take X or Y.
-                    // If X is not space, it's staged. If Y is not space, it's unstaged.
-                    // For simplicity, we just take the first non-space character as status.
-                    const char = status[0] !== ' ' ? status[0] : status[1];
-                    return { status: char as any, path: rest };
-                  });
+                const changes = parseUncommittedChangesFromPorcelain(statusRes.stdout);
                 this._sendResponse(message.requestId, changes);
               } else {
                 this._sendError(message.requestId, 'Failed to fetch uncommitted changes');
@@ -1975,7 +1962,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                 : [];
 
               // 5) Always prompt for a new commit message.
-              const defaultTitle = rangeCommits[0]?.subject || 'Squashed commit';
+              const defaultTitle = getDefaultSquashTitle(rangeCommits);
               const title = await vscode.window.showInputBox({
                 title: 'Squash Commits',
                 prompt: 'New squashed commit message',

@@ -52,6 +52,8 @@
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "tsc -p ./",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "watch": "tsc -watch -p ./",
     "bundle:webview": "esbuild src/webview/index.tsx --bundle --outfile=dist/webview.js --format=iife --target=es2020 --minify --sourcemap",
     "bundle:webview:watch": "npm run bundle:webview -- --watch",
@@ -65,7 +67,8 @@
     "@types/react-dom": "^18.0.0",
     "@types/vscode": "^1.75.0",
     "esbuild": "^0.17.11",
-    "typescript": "^4.9.5"
+    "typescript": "^4.9.5",
+    "vitest": "^0.34.6"
   },
   "dependencies": {
     "@vscode/codicons": "^0.0.44",
