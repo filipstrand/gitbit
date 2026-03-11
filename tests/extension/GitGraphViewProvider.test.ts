@@ -1,58 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitGraphViewProvider } from '../../src/extension/GitGraphViewProvider';
-
-const outputAppendLine = vi.fn();
-
-vi.mock('vscode', () => {
-  const disposable = { dispose: () => {} };
-  return {
-    window: {
-      createOutputChannel: () => ({
-        appendLine: outputAppendLine,
-        dispose: () => {}
-      }),
-      showWarningMessage: vi.fn(),
-      showErrorMessage: vi.fn(),
-      onDidChangeWindowState: () => disposable,
-      onDidChangeTextEditorSelection: () => disposable,
-      tabGroups: {
-        all: [],
-        onDidChangeTabs: () => disposable,
-        close: vi.fn()
-      }
-    },
-    workspace: {
-      workspaceFolders: [],
-      onDidSaveTextDocument: () => disposable,
-      onDidCreateFiles: () => disposable,
-      onDidDeleteFiles: () => disposable,
-      onDidRenameFiles: () => disposable,
-      createFileSystemWatcher: () => ({
-        onDidChange: () => disposable,
-        onDidCreate: () => disposable,
-        onDidDelete: () => disposable,
-        dispose: () => {}
-      })
-    },
-    extensions: {
-      getExtension: () => undefined
-    },
-    commands: {
-      executeCommand: vi.fn()
-    },
-    TextEditorSelectionChangeKind: {
-      Mouse: 2
-    },
-    RelativePattern: class {
-      constructor(public base: string, public pattern: string) {}
-    },
-    Uri: {
-      joinPath: (...parts: any[]) => ({ parts }),
-      file: (fsPath: string) => ({ fsPath }),
-      from: (v: any) => v
-    }
-  };
-});
+import * as vscode from 'vscode';
 
 type ReceiveHandler = (message: any) => Promise<void>;
 
@@ -90,7 +38,8 @@ function setupHarness() {
 
 describe('GitGraphViewProvider message handling', () => {
   beforeEach(() => {
-    outputAppendLine.mockReset();
+    (vscode.window as any).showWarningMessage = vi.fn(async () => undefined);
+    (vscode.window as any).showErrorMessage = vi.fn(async () => undefined);
   });
 
   it('passes force flag to repos/list discovery and returns sorted repos', async () => {
@@ -115,6 +64,32 @@ describe('GitGraphViewProvider message handling', () => {
       data: [
         { root: '/a', label: 'alpha', lastCommitUnix: 200, hasUncommittedChanges: false, currentBranch: 'main' },
         { root: '/b', label: 'beta', lastCommitUnix: 100, hasUncommittedChanges: false, currentBranch: 'main' }
+      ]
+    });
+  });
+
+  it('uses cached discovery path when repos/list force flag is omitted', async () => {
+    const { provider, posted, webviewView, getReceiver } = setupHarness();
+    (provider as any)._discoverRepos = vi.fn().mockResolvedValue([
+      { root: '/z', label: 'zeta' },
+      { root: '/a', label: 'alpha' }
+    ]);
+    (provider as any)._getRepoMeta = vi.fn().mockResolvedValue({
+      lastCommitUnix: 100,
+      hasUncommittedChanges: false,
+      currentBranch: 'main'
+    });
+
+    await provider.resolveWebviewView(webviewView, {} as any, {} as any);
+    await getReceiver()!({ type: 'repos/list', requestId: 'r2', payload: {} });
+
+    expect((provider as any)._discoverRepos).toHaveBeenCalledWith(false);
+    expect(posted[posted.length - 1]).toEqual({
+      type: 'ok',
+      requestId: 'r2',
+      data: [
+        { root: '/a', label: 'alpha', lastCommitUnix: 100, hasUncommittedChanges: false, currentBranch: 'main' },
+        { root: '/z', label: 'zeta', lastCommitUnix: 100, hasUncommittedChanges: false, currentBranch: 'main' }
       ]
     });
   });
@@ -210,6 +185,40 @@ describe('GitGraphViewProvider message handling', () => {
       requestId: 'f2',
       message: 'Fetch failed',
       details: 'network error'
+    });
+  });
+
+  it('returns rebase error when target branch is missing', async () => {
+    const { provider, posted, webviewView, getReceiver } = setupHarness();
+    (provider as any)._gitRunner = { cwd: '/repo', run: vi.fn() };
+
+    await provider.resolveWebviewView(webviewView, {} as any, {} as any);
+    await getReceiver()!({ type: 'git/rebase', requestId: 'rb1', payload: {} });
+
+    expect(posted[posted.length - 1]).toEqual({
+      type: 'error',
+      requestId: 'rb1',
+      message: 'Rebase failed: missing target branch',
+      details: undefined
+    });
+  });
+
+  it('cancels rebase when user does not confirm modal', async () => {
+    const { provider, posted, webviewView, getReceiver } = setupHarness();
+    const run = vi.fn();
+    (provider as any)._gitRunner = { cwd: '/repo', run };
+    (provider as any)._ensureClean = vi.fn().mockResolvedValue(true);
+    ((vscode.window as any).showWarningMessage as any).mockResolvedValue('Cancel');
+
+    await provider.resolveWebviewView(webviewView, {} as any, {} as any);
+    await getReceiver()!({ type: 'git/rebase', requestId: 'rb2', payload: { onto: 'main' } });
+
+    expect(run).not.toHaveBeenCalledWith(['rebase', 'main'], 600000);
+    expect(posted[posted.length - 1]).toEqual({
+      type: 'error',
+      requestId: 'rb2',
+      message: 'Rebase cancelled',
+      details: undefined
     });
   });
 });

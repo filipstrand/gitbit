@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DetailsPane } from '../../../src/webview/components/DetailsPane';
 
 const mockRequest = vi.fn();
@@ -101,6 +101,75 @@ describe('DetailsPane', () => {
         status: 'M'
       })
     }));
+  });
+
+  it('supports amend with Alt key as no-verify', async () => {
+    mockRequest.mockResolvedValue(undefined);
+    mockUseCommitDetails.mockReturnValue({
+      details: {
+        sha: 'UNCOMMITTED',
+        parents: ['HEAD'],
+        subject: 'Uncommitted Changes',
+        message: 'Uncommitted Changes',
+        authorName: '*',
+        authorEmail: '',
+        authorDateIso: '2026-03-11T00:00:00Z'
+      },
+      changes: [
+        { path: 'a.txt', status: '?' },
+        { path: 'b.txt', status: 'M' }
+      ],
+      loading: false
+    });
+
+    render(<DetailsPane sha="UNCOMMITTED" />);
+    const amendButton = screen.getByRole('button', { name: 'Amend' });
+    fireEvent.click(amendButton);
+    fireEvent.click(amendButton, { altKey: true });
+
+    expect(mockRequest).toHaveBeenCalledWith('git/commit', {
+      message: '',
+      paths: ['a.txt', 'b.txt'],
+      amend: true,
+      noVerify: true
+    });
+  });
+
+  it('clears commit error banner on ui/escape event', async () => {
+    mockRequest.mockRejectedValue({ message: 'Commit failed', details: 'hook output' });
+    mockUseCommitDetails.mockReturnValue({
+      details: {
+        sha: 'UNCOMMITTED',
+        parents: ['HEAD'],
+        subject: 'Uncommitted Changes',
+        message: 'Uncommitted Changes',
+        authorName: '*',
+        authorEmail: '',
+        authorDateIso: '2026-03-11T00:00:00Z'
+      },
+      changes: [
+        { path: 'a.txt', status: '?' }
+      ],
+      loading: false
+    });
+
+    render(<DetailsPane sha="UNCOMMITTED" />);
+    fireEvent.change(screen.getByPlaceholderText('Commit message...'), {
+      target: { value: 'msg' }
+    });
+
+    const commitButton = screen.getByRole('button', { name: 'Commit' });
+    fireEvent.click(commitButton);
+    fireEvent.click(commitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Commit failed')).toBeTruthy();
+    });
+
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'ui/escape' } }));
+    await waitFor(() => {
+      expect(screen.queryByText('Commit failed')).toBeNull();
+    });
   });
 });
 
