@@ -60,5 +60,43 @@ describe('FileTree', () => {
     fireEvent.click(checkbox);
     expect(onToggleSelect).toHaveBeenCalledWith(change.path, true);
   });
+
+  it('collapses folder nodes when clicked', () => {
+    window.iconsUri = '/icons';
+    const { container } = render(
+      <FileTree
+        changes={[change]}
+        onFileClick={() => {}}
+      />
+    );
+
+    expect(screen.getByText('simple.py')).toBeInTheDocument();
+    const folderRow = container.querySelector('.tree-node .file-item');
+    expect(folderRow).toBeTruthy();
+    fireEvent.click(folderRow!);
+    expect(screen.queryByText('simple.py')).not.toBeInTheDocument();
+  });
+
+  it('discards the current multi-selection when clicking discard on a selected file', () => {
+    window.iconsUri = '/icons';
+    const onDiscard = vi.fn();
+    const changes: Change[] = [
+      { path: 'a.txt', status: 'M' },
+      { path: 'b.txt', status: 'M' }
+    ];
+    render(
+      <FileTree
+        changes={changes}
+        onFileClick={() => {}}
+        onDiscard={onDiscard}
+        selectable
+        selectedPaths={new Set(['a.txt', 'b.txt'])}
+      />
+    );
+
+    const discardIcons = screen.getAllByTitle('Discard changes');
+    fireEvent.click(discardIcons[0]);
+    expect(onDiscard).toHaveBeenCalledWith(['a.txt', 'b.txt']);
+  });
 });
 

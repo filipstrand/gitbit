@@ -21,10 +21,13 @@ vi.mock('../../src/webview/state/vscode', () => ({
 }));
 
 describe('App', () => {
+  let setSelectedBranchSpy: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     mockRequest.mockReset();
     mockRefresh.mockReset();
     mockUseCommits.mockReset();
+    setSelectedBranchSpy = vi.fn();
 
     mockUseCommits.mockReturnValue({
       commits: [],
@@ -34,7 +37,7 @@ describe('App', () => {
       error: '',
       hasUncommitted: false,
       selectedBranch: 'HEAD',
-      setSelectedBranch: vi.fn(),
+      setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
       refresh: mockRefresh
@@ -66,6 +69,26 @@ describe('App', () => {
       expect(mockRequest).toHaveBeenCalledWith('git/fetch', {});
       expect(mockRequest).toHaveBeenCalledWith('repos/list', { force: true });
     });
+  });
+
+  it('selects repo and resets branch filter to HEAD', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith('repo/select', { root: '/tmp/gitbit' });
+    });
+    expect(setSelectedBranchSpy).toHaveBeenCalledWith('HEAD');
+    expect(mockRefresh).toHaveBeenCalledWith(true);
+  });
+
+  it('runs pull action through gitAction flow', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /Pull/ }));
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith('git/pull', {});
+    });
+    expect(mockRefresh).toHaveBeenCalled();
   });
 });
 
