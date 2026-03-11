@@ -13,7 +13,7 @@ import { vscode, request } from './state/vscode';
 import { RepoInfo } from '../extension/protocol/types';
 import './styles/main.css';
 
-const App = () => {
+export const App = () => {
   const { 
     commits, 
     maxLanes,
