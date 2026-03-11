@@ -1969,7 +1969,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                 : [];
 
               // 5) Always prompt for a new commit message.
-              const defaultTitle = rangeCommitsNewestFirst[0]?.subject || 'Squashed commit';
+              const defaultTitle = rangeCommits[0]?.subject || 'Squashed commit';
               const title = await vscode.window.showInputBox({
                 title: 'Squash Commits',
                 prompt: 'New squashed commit message',
