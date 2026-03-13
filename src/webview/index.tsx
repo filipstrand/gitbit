@@ -764,25 +764,23 @@ export const App = () => {
       // If placement lookup fails, still navigate to the repo and focus by SHA best-effort.
     }
 
-    if (candidateBranches.length > 1) {
-      setContextPicker({
-        selection,
-        branches: candidateBranches,
-        anchorRect: anchorRect
-          ? {
-              left: anchorRect.left,
-              right: anchorRect.right,
-              bottom: anchorRect.bottom,
-              width: anchorRect.width
-            }
-          : undefined
-      });
-      setContextPickerQuery('');
-      return;
-    }
+    const pickerBranches = candidateBranches.length > 0
+      ? candidateBranches
+      : [preferredBranch];
 
-    const finalBranch = candidateBranches[0] || preferredBranch;
-    runContextJump(selection, finalBranch);
+    setContextPicker({
+      selection,
+      branches: pickerBranches,
+      anchorRect: anchorRect
+        ? {
+            left: anchorRect.left,
+            right: anchorRect.right,
+            bottom: anchorRect.bottom,
+            width: anchorRect.width
+          }
+        : undefined
+    });
+    setContextPickerQuery('');
   }, [prioritizeContextBranches, runContextJump, selectedGlobalCommit]);
 
   // Replay-like post-drop animation: FLIP animate the rewritten rows into their new positions.
