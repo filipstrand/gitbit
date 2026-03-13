@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5
+
+- Commit UX: commit/amend now run on the first click by defaulting to all changed files when no explicit file selection exists.
+- Hook errors: improved commit failure details by surfacing both stdout and stderr from failed hook runs (for clearer `ruff`/pre-commit output).
+- Context menu: keep primary and submenu popups within the viewport near bottom/right edges.
+- Repo UX: branch favorites typing fix for package builds and general behavior test coverage improvements.
+
 ## 0.2.4
 
 - Custom Icon Refresh: Replaced Lucide icons with custom-designed icons for generic files, folders, and specific configuration files (like `.cursorrules`, `makefile`, `yaml`, etc.) for a more unique and polished look.
