@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 
 type MenuAction = {
   label?: string;
@@ -20,11 +20,56 @@ interface ContextMenuProps {
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions }) => {
+  const VIEWPORT_PADDING = 8;
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const submenuRef = useRef<HTMLDivElement | null>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x, y });
   const [submenuState, setSubmenuState] = useState<{
     actions: MenuAction[];
     x: number;
     y: number;
+    anchorRect?: { left: number; right: number };
   } | null>(null);
+
+  useLayoutEffect(() => {
+    setMenuPos({ x, y });
+  }, [x, y]);
+
+  useLayoutEffect(() => {
+    const el = menuRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+
+    const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - r.width - VIEWPORT_PADDING);
+    const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - r.height - VIEWPORT_PADDING);
+    const nextX = Math.max(VIEWPORT_PADDING, Math.min(menuPos.x, maxLeft));
+    const nextY = Math.max(VIEWPORT_PADDING, Math.min(menuPos.y, maxTop));
+    if (nextX !== menuPos.x || nextY !== menuPos.y) {
+      setMenuPos({ x: nextX, y: nextY });
+    }
+  }, [menuPos.x, menuPos.y, actions.length]);
+
+  useLayoutEffect(() => {
+    const el = submenuRef.current;
+    if (!el || !submenuState) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+
+    let nextX = submenuState.x;
+    const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - r.width - VIEWPORT_PADDING);
+    if (nextX > maxLeft && submenuState.anchorRect) {
+      nextX = submenuState.anchorRect.left - r.width - 2;
+    }
+    nextX = Math.max(VIEWPORT_PADDING, Math.min(nextX, maxLeft));
+
+    const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - r.height - VIEWPORT_PADDING);
+    const nextY = Math.max(VIEWPORT_PADDING, Math.min(submenuState.y, maxTop));
+
+    if (nextX !== submenuState.x || nextY !== submenuState.y) {
+      setSubmenuState(prev => (prev ? { ...prev, x: nextX, y: nextY } : prev));
+    }
+  }, [submenuState?.x, submenuState?.y, submenuState?.actions.length]);
 
   return (
     <>  
@@ -35,10 +80,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
           onClose();
         }}
       />
-      <div style={{
+      <div
+        className="gitbit-context-menu"
+        ref={menuRef}
+        style={{
         position: 'fixed',
-        top: y,
-        left: x,
+        top: menuPos.y,
+        left: menuPos.x,
         backgroundColor: 'var(--vscode-menu-background)',
         color: 'var(--vscode-menu-foreground)',
         border: '1px solid var(--vscode-menu-border)',
@@ -47,7 +95,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
         zIndex: 1000,
         padding: '4px 0',
         minWidth: '160px'
-      }}>
+        }}
+      >
         {actions.map((action, i) => {
           if (action.separator) {
             return (
@@ -107,6 +156,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
                   actions: action.submenu!,
                   x: Math.round(r.right + 2),
                   y: Math.round(r.top - 4),
+                  anchorRect: { left: Math.round(r.left), right: Math.round(r.right) }
                 });
               } else {
                 // Close any open submenu when hovering other items.
@@ -136,7 +186,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
       </div>
 
       {submenuState && (
-        <div style={{
+        <div
+          className="gitbit-submenu"
+          ref={submenuRef}
+          style={{
           position: 'fixed',
           top: submenuState.y,
           left: submenuState.x,
@@ -148,8 +201,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
           zIndex: 1001,
           padding: '4px 0',
           minWidth: '180px'
-        }}
-        onMouseLeave={() => setSubmenuState(null)}
+          }}
+          onMouseLeave={() => setSubmenuState(null)}
         >
           {submenuState.actions.map((action, i) => {
             if (action.separator) {
