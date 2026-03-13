@@ -72,8 +72,17 @@ export interface GlobalCommitContextResponse {
   containsBaseBranch: boolean;
   containingLocalBranches: string[];
   containingRemoteBranches: string[];
+  rankedContainingBranches?: RankedContextBranch[];
   lastFetchUnix: number;
   commits: Commit[];
+}
+
+export interface RankedContextBranch {
+  name: string;
+  source: 'local' | 'remote';
+  score: number;
+  distanceFromTip: number;
+  reasons: string[];
 }
 
 export type SelectionMode = 'single' | 'range';

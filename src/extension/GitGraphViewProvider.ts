@@ -5,7 +5,7 @@ import * as os from 'os';
 import { GitRunner } from './git/GitRunner';
 import { GitLogParser } from './git/GitLogParser';
 import { getDefaultSquashTitle, parseUncommittedChangesFromPorcelain } from './git/changeParsing';
-import { RequestMessage, ResponseMessage, RepoInfo, GlobalSearchGroup, GlobalSearchResponse, GlobalCommitContextResponse } from './protocol/types';
+import { RequestMessage, ResponseMessage, RepoInfo, GlobalSearchGroup, GlobalSearchResponse, GlobalCommitContextResponse, RankedContextBranch } from './protocol/types';
 import { GitContentProvider } from './git/GitContentProvider';
 
 export class GitGraphViewProvider implements vscode.WebviewViewProvider {
@@ -237,6 +237,160 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private _normalizeContextBranchName(name: string): string {
+    const trimmed = String(name || '').trim();
+    return trimmed.replace(/^origin\//, '');
+  }
+
+  private _isMainLikeBranch(name: string): boolean {
+    const n = this._normalizeContextBranchName(name).toLowerCase();
+    return n === 'main' || n === 'master';
+  }
+
+  private _isFeatureLikeBranch(name: string): boolean {
+    const n = this._normalizeContextBranchName(name).toLowerCase();
+    return /(^|\/)(feature|feat|bugfix|fix|task|story|spike|experiment|epic|ticket)[/-]/.test(n);
+  }
+
+  private _isMaintenanceLikeBranch(name: string): boolean {
+    const n = this._normalizeContextBranchName(name).toLowerCase();
+    return /(^|\/)(release|hotfix|support|stabilize|stabilization|chore)[/-]/.test(n);
+  }
+
+  private _extractMergeHintBranches(subject: string): string[] {
+    const s = String(subject || '').trim();
+    if (!s) return [];
+    const out = new Set<string>();
+
+    const branchMatch = s.match(/Merge (?:remote-tracking )?branch ['"]([^'"]+)['"]/i);
+    if (branchMatch?.[1]) out.add(branchMatch[1].trim());
+
+    const fromMatch = s.match(/Merge pull request #\d+ from ([^\s]+)/i);
+    if (fromMatch?.[1]) out.add(fromMatch[1].trim());
+
+    return Array.from(out).filter(Boolean);
+  }
+
+  private _hintMatchesCandidate(hint: string, candidate: string): boolean {
+    const h = this._normalizeContextBranchName(hint);
+    const c = this._normalizeContextBranchName(candidate);
+    if (!h || !c) return false;
+    if (h === c) return true;
+    if (h.endsWith('/' + c)) return true;
+    if (c.endsWith('/' + h)) return true;
+    return false;
+  }
+
+  private async _buildRankedContextBranches(
+    runner: GitRunner,
+    sha: string,
+    containingLocalBranches: string[],
+    containingRemoteBranches: string[],
+    resolvedBaseBranch: string,
+    directRefNames: string[]
+  ): Promise<RankedContextBranch[]> {
+    const directRefNamesNorm = new Set(directRefNames.map(n => this._normalizeContextBranchName(n)));
+    const resolvedBaseNorm = this._normalizeContextBranchName(resolvedBaseBranch || '');
+
+    // Best-effort: detect feature-ish branch names from first-parent merge path to base.
+    let mergeHintBranches: string[] = [];
+    if (resolvedBaseBranch) {
+      const mergePathRes = await runner.run([
+        'log',
+        '--first-parent',
+        '--ancestry-path',
+        '--merges',
+        '--format=%s',
+        `${sha}..${resolvedBaseBranch}`
+      ]);
+      if (mergePathRes.exitCode === 0) {
+        mergeHintBranches = Array.from(
+          new Set(
+            mergePathRes.stdout
+              .split('\n')
+              .flatMap(line => this._extractMergeHintBranches(line))
+          )
+        );
+      }
+    }
+
+    const candidates: Array<{ name: string; source: 'local' | 'remote' }> = [
+      ...containingLocalBranches.map(name => ({ name, source: 'local' as const })),
+      ...containingRemoteBranches.map(name => ({ name, source: 'remote' as const }))
+    ];
+
+    const ranked = await Promise.all(
+      candidates.map(async (candidate) => {
+        const reasons: string[] = [];
+        let score = 0;
+
+        if (this._isMainLikeBranch(candidate.name)) {
+          score += 120;
+          reasons.push('mainline branch');
+        }
+        if (this._isFeatureLikeBranch(candidate.name)) {
+          score += 42;
+          reasons.push('feature-like branch');
+        }
+        if (this._isMaintenanceLikeBranch(candidate.name)) {
+          score -= 18;
+          reasons.push('maintenance/release branch');
+        }
+        if (candidate.source === 'remote') {
+          score += 6;
+          reasons.push('remote-tracking context');
+        }
+
+        const normalized = this._normalizeContextBranchName(candidate.name);
+        if (resolvedBaseNorm && normalized === resolvedBaseNorm) {
+          score += 24;
+          reasons.push('selected base branch');
+        }
+        if (directRefNamesNorm.has(normalized)) {
+          score += 36;
+          reasons.push('direct ref on commit');
+        }
+        if (mergeHintBranches.some(h => this._hintMatchesCandidate(h, candidate.name))) {
+          score += 32;
+          reasons.push('merge-path hint');
+        }
+
+        const distanceRes = await runner.run(['rev-list', '--count', `${sha}..${candidate.name}`]);
+        let distanceFromTip = 999999;
+        if (distanceRes.exitCode === 0) {
+          const parsed = Number.parseInt(String(distanceRes.stdout || '').trim() || '0', 10);
+          distanceFromTip = Number.isFinite(parsed) ? parsed : 999999;
+        }
+
+        if (distanceFromTip === 0) {
+          score += 28;
+          reasons.push('branch tip is the commit');
+        } else if (distanceFromTip <= 5) {
+          score += 14;
+          reasons.push('very close to branch tip');
+        } else if (distanceFromTip <= 25) {
+          score += 6;
+          reasons.push('close to branch tip');
+        }
+        score -= Math.min(distanceFromTip, 250) * 0.18;
+
+        return {
+          name: candidate.name,
+          source: candidate.source,
+          score: Number(score.toFixed(2)),
+          distanceFromTip,
+          reasons
+        } satisfies RankedContextBranch;
+      })
+    );
+
+    return ranked.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.distanceFromTip !== b.distanceFromTip) return a.distanceFromTip - b.distanceFromTip;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
   private async _buildGlobalCommitContext(
     root: string,
     sha: string,
@@ -263,19 +417,32 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     const defaultBaseBranch = this._pickDefaultBaseBranch(baseBranchOptions, originHead || currentBranch);
     const resolvedBaseBranch = this._pickDefaultBaseBranch(baseBranchOptions, preferredBaseBranch || defaultBaseBranch);
 
-    const [containsLocalRes, containsRemoteRes, containsBaseRes, lastFetchUnix] = await Promise.all([
+    const [containsLocalRes, containsRemoteRes, containsBaseRes, lastFetchUnix, directRefsRes] = await Promise.all([
       runner.run(['branch', '--contains', sha, '--format=%(refname:short)']),
       runner.run(['branch', '-r', '--contains', sha, '--format=%(refname:short)']),
       resolvedBaseBranch
         ? runner.run(['merge-base', '--is-ancestor', sha, resolvedBaseBranch])
         : Promise.resolve({ stdout: '', stderr: '', exitCode: 1 }),
-      this._getLastFetchUnix(runner)
+      this._getLastFetchUnix(runner),
+      runner.run(['show', '-s', '--format=%D', sha])
     ]);
 
     const containingLocalBranches =
       containsLocalRes.exitCode === 0 ? this._parseRefLines(containsLocalRes.stdout) : [];
     const containingRemoteBranches =
       containsRemoteRes.exitCode === 0 ? this._parseRefLines(containsRemoteRes.stdout) : [];
+    const directRefNames =
+      directRefsRes.exitCode === 0
+        ? GitLogParser.parseDecorations(String(directRefsRes.stdout || '').trim()).map(r => r.name)
+        : [];
+    const rankedContainingBranches = await this._buildRankedContextBranches(
+      runner,
+      sha,
+      containingLocalBranches,
+      containingRemoteBranches,
+      resolvedBaseBranch,
+      directRefNames
+    );
 
     const logFormat = '%H%x09%P%x09%an%x09%ae%x09%ad%x09%s%x09%D';
     const logRefs = Array.from(
@@ -314,6 +481,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
       containsBaseBranch: containsBaseRes.exitCode === 0,
       containingLocalBranches,
       containingRemoteBranches,
+      rankedContainingBranches,
       lastFetchUnix,
       commits
     };
