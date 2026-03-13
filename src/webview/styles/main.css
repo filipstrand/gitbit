@@ -70,6 +70,13 @@ body {
   gap: 4px;
 }
 
+.toolbar-button.icon-only {
+  width: 24px;
+  justify-content: center;
+  padding: 2px 0;
+  gap: 0;
+}
+
 .toolbar-button.secondary {
   background-color: transparent;
   color: var(--vscode-foreground);
@@ -437,6 +444,36 @@ body {
 
 .repo-switcher .branch-item.repo-dirty {
   color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.repo-switcher .branch-selector-trigger {
+  padding-right: 32px;
+}
+
+.repo-selector-current-label {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.repo-item-main {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-upstream-indicator {
+  margin-left: auto;
+  margin-right: 12px;
+  opacity: 0.85;
+  color: var(--vscode-gitDecoration-untrackedResourceForeground, var(--vscode-charts-blue));
+  flex: 0 0 auto;
 }
 
 .repo-switcher .branch-selector-popup {

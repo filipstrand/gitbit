@@ -65,6 +65,11 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
     return !!repos.find(r => r.root === selectedRoot)?.hasUncommittedChanges;
   }, [repos, selectedRoot]);
 
+  const selectedRepoHasUpstreamUpdates = useMemo(() => {
+    if (repos.length === 1) return !!repos[0].hasUpstreamUpdates;
+    return !!repos.find(r => r.root === selectedRoot)?.hasUpstreamUpdates;
+  }, [repos, selectedRoot]);
+
   const filteredRepos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return repos;
@@ -81,7 +86,16 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
           className={`branch-selector-trigger repo-selector-static ${selectedRepoIsDirty ? 'repo-dirty' : ''}`}
           title={repos[0].root}
         >
-          {currentLabel}
+          <span className="repo-selector-current-label">{currentLabel}</span>
+          {selectedRepoHasUpstreamUpdates && (
+            <span
+              className="repo-upstream-indicator"
+              title="Upstream has newer commits"
+              aria-label="Upstream has newer commits"
+            >
+              ⬇
+            </span>
+          )}
         </span>
       </div>
     );
@@ -101,7 +115,16 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
         title={selectedRoot || ''}
         disabled={disabled || repos.length === 0}
       >
-        {currentLabel}
+        <span className="repo-selector-current-label">{currentLabel}</span>
+        {selectedRepoHasUpstreamUpdates && (
+          <span
+            className="repo-upstream-indicator"
+            title="Upstream has newer commits"
+            aria-label="Upstream has newer commits"
+          >
+            ⬇
+          </span>
+        )}
       </button>
 
       {isOpen && (
@@ -128,25 +151,36 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
                     setIsOpen(false);
                   }}
                 >
-                  <span>{repo.label}</span>
-                  {!!getBranch(repo) && (() => {
-                    const branch = getBranch(repo);
-                    const branchLower = branch.toLowerCase();
-                    const isNonMain = branchLower !== 'main';
-                    const nonMainColor =
-                      'color-mix(in srgb, var(--vscode-charts-yellow, #f9d65c) 55%, var(--vscode-descriptionForeground) 45%)';
-                    return (
+                  <span className="repo-item-main">
+                    <span>{repo.label}</span>
+                    {!!getBranch(repo) && (() => {
+                      const branch = getBranch(repo);
+                      const branchLower = branch.toLowerCase();
+                      const isNonMain = branchLower !== 'main';
+                      const nonMainColor =
+                        'color-mix(in srgb, var(--vscode-charts-yellow, #f9d65c) 55%, var(--vscode-descriptionForeground) 45%)';
+                      return (
+                      <span
+                        style={{
+                          marginLeft: '8px',
+                          color: isNonMain ? nonMainColor : 'var(--vscode-descriptionForeground)',
+                          opacity: 0.8
+                        }}
+                      >
+                        ({branch})
+                      </span>
+                      );
+                    })()}
+                  </span>
+                  {repo.hasUpstreamUpdates && (
                     <span
-                      style={{
-                        marginLeft: '8px',
-                        color: isNonMain ? nonMainColor : 'var(--vscode-descriptionForeground)',
-                        opacity: 0.8
-                      }}
+                      className="repo-upstream-indicator"
+                      title="Upstream has newer commits"
+                      aria-label="Upstream has newer commits"
                     >
-                      ({branch})
+                      ⬇
                     </span>
-                    );
-                  })()}
+                  )}
                 </div>
               ))}
             </div>

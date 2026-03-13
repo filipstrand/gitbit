@@ -43,6 +43,11 @@ export interface RepoInfo {
    * this may be "detached".
    */
   currentBranch?: string;
+  /**
+   * True when the current branch is behind its upstream (i.e. there are commits to fetch/pull).
+   * This is informational only; no pull/rebase is performed automatically.
+   */
+  hasUpstreamUpdates?: boolean;
 }
 
 export interface GlobalSearchGroup {

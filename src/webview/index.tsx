@@ -695,15 +695,15 @@ export const App = () => {
         <div className="toolbar-left">
           <div className="toolbar-actions">
             <button 
-              className={`toolbar-button secondary ${actionStatus['git/fetch'] === 'success' ? 'action-success' : ''}`}
+              className={`toolbar-button secondary icon-only ${actionStatus['git/fetch'] === 'success' ? 'action-success' : ''}`}
               onClick={() => gitAction('git/fetch', {})}
-              title="Fetch all branches and prune"
+              title="Fetch all branches and refresh upstream status"
+              aria-label="Fetch all branches and refresh upstream status"
               disabled={singleContextLocked || actionStatus['git/fetch'] === 'running'}
             >
               <span className={`button-icon ${actionStatus['git/fetch'] === 'running' ? 'spin' : ''}`}>
                 {actionStatus['git/fetch'] === 'success' ? '✓' : '↻'}
               </span>
-              {actionStatus['git/fetch'] === 'running' ? 'Fetching…' : 'Fetch'}
             </button>
             <button 
               className={`toolbar-button secondary ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''}`}

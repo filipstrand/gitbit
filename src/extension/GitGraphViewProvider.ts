@@ -159,15 +159,18 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     return repos;
   }
 
-  private async _getRepoMeta(root: string): Promise<Pick<RepoInfo, 'lastCommitUnix' | 'hasUncommittedChanges' | 'currentBranch'>> {
+  private async _getRepoMeta(root: string): Promise<Pick<RepoInfo, 'lastCommitUnix' | 'hasUncommittedChanges' | 'currentBranch' | 'hasUpstreamUpdates'>> {
     try {
       const runner = this._gitRunnersByRoot.get(root) || new GitRunner(root);
       if (!this._gitRunnersByRoot.has(root)) this._gitRunnersByRoot.set(root, runner);
 
-      const [logRes, statusRes, branchRes] = await Promise.all([
+      const [logRes, statusRes, branchRes, upstreamBehindRes] = await Promise.all([
         runner.run(['log', '-1', '--format=%ct']),
         runner.run(['status', '--porcelain']),
-        runner.run(['symbolic-ref', '--quiet', '--short', 'HEAD'])
+        runner.run(['symbolic-ref', '--quiet', '--short', 'HEAD']),
+        // Count commits that exist upstream but not locally.
+        // Non-zero exit simply means no upstream/tracking branch configured.
+        runner.run(['rev-list', '--count', 'HEAD...@{upstream}', '--right-only'])
       ]);
 
       const lastCommitUnix = logRes.exitCode === 0 ? Number(String(logRes.stdout || '').trim() || 0) : 0;
@@ -175,14 +178,24 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
         statusRes.exitCode === 0 ? String(statusRes.stdout || '').trim().length > 0 : false;
       const currentBranch =
         branchRes.exitCode === 0 ? String(branchRes.stdout || '').trim() : 'detached';
+      const hasUpstreamUpdates =
+        upstreamBehindRes.exitCode === 0
+          ? Number.parseInt(String(upstreamBehindRes.stdout || '').trim() || '0', 10) > 0
+          : false;
 
       return {
         lastCommitUnix: Number.isFinite(lastCommitUnix) ? lastCommitUnix : 0,
         hasUncommittedChanges,
-        currentBranch: currentBranch || 'detached'
+        currentBranch: currentBranch || 'detached',
+        hasUpstreamUpdates
       };
     } catch {
-      return { lastCommitUnix: 0, hasUncommittedChanges: false, currentBranch: 'detached' };
+      return {
+        lastCommitUnix: 0,
+        hasUncommittedChanges: false,
+        currentBranch: 'detached',
+        hasUpstreamUpdates: false
+      };
     }
   }
 
