@@ -9,6 +9,11 @@
 - `npx @vscode/vsce package`: Package into a `.vsix` file
 - `npm run dev`: Start watch mode for both extension and webview
 
+## Cursor Skills
+
+- Release workflow skill: `.cursor/skills/release-workflow/SKILL.md`
+- Workspace cleanup skill: `.cursor/skills/clean-workspace/SKILL.md`
+
 ## Release Process
 
 When performing a release:
@@ -20,6 +25,12 @@ When performing a release:
     - Build and package the extension.
     - Commit and tag the changes (including the versioned release `.vsix` artifact).
     - Remind the user to upload the `.vsix` to GitHub Releases.
+
+## Clean Process
+
+When performing a local cleanup:
+1. Use the project clean skill at `.cursor/skills/clean-workspace/SKILL.md`.
+2. Preserve the latest tracked release `.vsix` unless explicitly asked to remove it.
 
 ## Project Structure
 
