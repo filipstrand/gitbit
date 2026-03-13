@@ -156,7 +156,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
 
     const localAndRemote: BranchListItem[] = branches
       .filter(b => !activeFavorites.has(b.name))
-      .map(b => ({ ...b, type: (b.remote ? 'remote' : 'local') as const, isFavorite: false }));
+      .map(b => ({ ...b, type: (b.remote ? 'remote' : 'local') as BranchGroupType, isFavorite: false }));
 
     const allItems: BranchListItem[] = [...fixedImportant, ...importantFromFavorites, ...localAndRemote];
 
