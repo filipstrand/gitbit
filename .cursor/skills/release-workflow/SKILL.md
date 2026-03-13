@@ -18,7 +18,7 @@ Use this skill for GitBit release prep.
 5. Create VSIX using the version from `package.json`:
    - `npx @vscode/vsce package --out gitbit-<version>.vsix`
 6. If requested, create git release commit/tag:
-   - stage intended files
+   - stage intended files, including `gitbit-<version>.vsix`
    - commit as `Release v<version>`
    - create lightweight tag `v<version>`
    - do not push unless explicitly requested
@@ -28,5 +28,6 @@ Use this skill for GitBit release prep.
 Report:
 - resolved version
 - generated VSIX path
+- whether the VSIX was staged/committed
 - whether commit/tag were created
 - any follow-up actions (e.g., run GitHub release workflow)

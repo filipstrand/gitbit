@@ -18,7 +18,7 @@ When performing a release:
 4. The process must:
     - Delete any existing `.vsix` files.
     - Build and package the extension.
-    - Commit and tag the changes (the `.vsix` itself should NOT be committed).
+    - Commit and tag the changes (including the versioned release `.vsix` artifact).
     - Remind the user to upload the `.vsix` to GitHub Releases.
 
 ## Project Structure

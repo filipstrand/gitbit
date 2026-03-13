@@ -11,6 +11,7 @@ out/
 
 # Extension package
 *.vsix
+!gitbit-*.vsix
 
 # OS files
 .DS_Store
