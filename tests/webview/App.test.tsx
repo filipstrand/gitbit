@@ -5,6 +5,7 @@ import { App } from '../../src/webview/index';
 
 const mockRequest = vi.fn();
 const mockRefresh = vi.fn();
+const mockLoadMore = vi.fn();
 const mockUseCommits = vi.fn();
 const mockUseCommitDetails = vi.fn();
 
@@ -31,6 +32,7 @@ describe('App', () => {
   beforeEach(() => {
     mockRequest.mockReset();
     mockRefresh.mockReset();
+    mockLoadMore.mockReset();
     mockUseCommits.mockReset();
     mockUseCommitDetails.mockReset();
     setSelectedBranchSpy = vi.fn();
@@ -40,13 +42,16 @@ describe('App', () => {
       maxLanes: 1,
       branches: [{ name: 'main', remote: false, current: true }],
       loading: false,
+      loadingMore: false,
+      hasMore: false,
       error: '',
       hasUncommitted: false,
       selectedBranch: 'HEAD',
       setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
-      refresh: mockRefresh
+      refresh: mockRefresh,
+      loadMore: mockLoadMore
     });
 
     mockRequest.mockImplementation(async (type: string, payload?: any) => {
@@ -136,13 +141,16 @@ describe('App', () => {
       maxLanes: 1,
       branches: [{ name: 'main', remote: false, current: true }],
       loading: false,
+      loadingMore: false,
+      hasMore: false,
       error: '',
       hasUncommitted: false,
       selectedBranch: 'HEAD',
       setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
-      refresh: mockRefresh
+      refresh: mockRefresh,
+      loadMore: mockLoadMore
     });
 
     const { container } = render(<App />);
@@ -181,13 +189,16 @@ describe('App', () => {
       maxLanes: 1,
       branches: [{ name: 'main', remote: false, current: true }],
       loading: false,
+      loadingMore: false,
+      hasMore: false,
       error: '',
       hasUncommitted: false,
       selectedBranch: 'HEAD',
       setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
-      refresh: mockRefresh
+      refresh: mockRefresh,
+      loadMore: mockLoadMore
     });
 
     const { container } = render(<App />);

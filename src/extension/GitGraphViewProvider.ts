@@ -290,6 +290,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               return;
             }
             const limit = message.payload?.limit || 500;
+            const skip = Number(message.payload?.skip || 0);
             const branch = message.payload?.branch || 'HEAD';
             const logFormat = '%H%x09%P%x09%an%x09%ae%x09%ad%x09%s%x09%D';
             
@@ -300,6 +301,9 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               '--date=iso-strict',
               `--pretty=format:${logFormat}`
             ];
+            if (skip > 0) {
+              args.push('--skip', `${skip}`);
+            }
 
             if (branch === '--all') {
               args.push('--all');

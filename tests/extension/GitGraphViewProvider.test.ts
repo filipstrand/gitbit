@@ -221,5 +221,39 @@ describe('GitGraphViewProvider message handling', () => {
       details: undefined
     });
   });
+
+  it('passes pagination skip when fetching commits list', async () => {
+    const { provider, posted, webviewView, getReceiver } = setupHarness();
+    const run = vi.fn().mockResolvedValue({
+      exitCode: 0,
+      stdout: '',
+      stderr: ''
+    });
+    (provider as any)._gitRunner = { cwd: '/repo', run };
+
+    await provider.resolveWebviewView(webviewView, {} as any, {} as any);
+    await getReceiver()!({
+      type: 'commits/list',
+      requestId: 'cl1',
+      payload: { branch: 'feature/test', limit: 100, skip: 500 }
+    });
+
+    expect(run).toHaveBeenCalledWith([
+      'log',
+      '--topo-order',
+      '-n',
+      '100',
+      '--date=iso-strict',
+      '--pretty=format:%H%x09%P%x09%an%x09%ae%x09%ad%x09%s%x09%D',
+      '--skip',
+      '500',
+      'feature/test'
+    ]);
+    expect(posted[posted.length - 1]).toEqual({
+      type: 'ok',
+      requestId: 'cl1',
+      data: []
+    });
+  });
 });
 

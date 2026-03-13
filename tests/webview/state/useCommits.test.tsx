@@ -55,6 +55,55 @@ describe('useCommits', () => {
     expect(mockRequest).toHaveBeenCalledWith('commits/list', { limit: 500, branch: 'feature' });
   });
 
+  it('loads the next page when loadMore is called', async () => {
+    mockRequest.mockImplementation(async (type: string, payload?: any) => {
+      if (type === 'branches/list') {
+        return [{ name: 'main', remote: false, current: true }];
+      }
+      if (type === 'commits/list') {
+        if (payload?.skip === 500) {
+          return [
+            {
+              sha: 'main2',
+              parents: [],
+              authorName: 'Filip',
+              authorEmail: 'filip@example.com',
+              authorDateIso: '2026-03-12T00:00:00Z',
+              subject: 'Second page',
+              decorations: '',
+              refs: []
+            }
+          ];
+        }
+        return Array.from({ length: 500 }, (_, idx) => ({
+          sha: `main${idx + 1}`,
+          parents: [],
+          authorName: 'Filip',
+          authorEmail: 'filip@example.com',
+          authorDateIso: '2026-03-12T00:00:00Z',
+          subject: `Initial ${idx + 1}`,
+          decorations: '',
+          refs: []
+        }));
+      }
+      return [];
+    });
+
+    const { result } = renderHook(() => useCommits());
+    await waitFor(() => expect(result.current.commits[0].sha).toBe('main1'));
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith('commits/list', { limit: 500, branch: 'HEAD', skip: 500 });
+    });
+    await waitFor(() => {
+      expect(result.current.commits.some(c => c.sha === 'main2')).toBe(true);
+    });
+  });
+
   it('refreshes silently on repoChanged event after debounce', async () => {
     renderHook(() => useCommits());
     await waitFor(() => expect(mockRequest).toHaveBeenCalled());

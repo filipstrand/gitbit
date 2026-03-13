@@ -3,10 +3,15 @@ import { Commit, Branch } from '../../extension/protocol/types';
 import { request } from './vscode';
 import { GraphLayout, GraphCommit } from './GraphLayout';
 
+const PAGE_SIZE = 500;
+
 export function useCommits() {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [nextSkip, setNextSkip] = useState(PAGE_SIZE);
   const [error, setError] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string>('HEAD');
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,22 +52,51 @@ export function useCommits() {
     }
   }, []); // No dependency on selectedBranch
 
-  const fetchCommits = useCallback(async (limit = 500, silent = false) => {
-    if (!silent) setLoading(true);
+  const fetchCommits = useCallback(async (options?: {
+    limit?: number;
+    skip?: number;
+    silent?: boolean;
+    append?: boolean;
+  }) => {
+    const limit = options?.limit ?? PAGE_SIZE;
+    const skip = options?.skip ?? 0;
+    const silent = options?.silent ?? false;
+    const append = options?.append ?? false;
+
+    if (!silent && !append) setLoading(true);
+    if (append) setLoadingMore(true);
     setError(null);
     try {
-      const data = await request<Commit[]>('commits/list', { limit, branch: selectedBranch });
-      setCommits(data);
+      const payload: any = { limit, branch: selectedBranch };
+      if (skip > 0) payload.skip = skip;
+      const data = await request<Commit[]>('commits/list', payload);
+      const hasUncommittedRow = skip === 0 && data.length > 0 && data[0].sha === 'UNCOMMITTED';
+      const pageCount = hasUncommittedRow ? data.length - 1 : data.length;
+      setHasMore(pageCount === limit);
+      setNextSkip(skip + limit);
+      if (append) {
+        setCommits(prev => [...prev, ...data]);
+      } else {
+        setCommits(data);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent && !append) setLoading(false);
+      if (append) setLoadingMore(false);
     }
   }, [selectedBranch]);
 
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    fetchCommits({ limit: PAGE_SIZE, skip: nextSkip, silent: true, append: true });
+  }, [fetchCommits, hasMore, loading, loadingMore, nextSkip]);
+
   const refresh = useCallback((silent = false) => {
     fetchBranches();
-    fetchCommits(500, silent);
+    setHasMore(true);
+    setNextSkip(PAGE_SIZE);
+    fetchCommits({ limit: PAGE_SIZE, skip: 0, silent, append: false });
   }, [fetchBranches, fetchCommits]);
 
   useEffect(() => {
@@ -70,7 +104,9 @@ export function useCommits() {
   }, [fetchBranches]);
 
   useEffect(() => {
-    fetchCommits();
+    setHasMore(true);
+    setNextSkip(PAGE_SIZE);
+    fetchCommits({ limit: PAGE_SIZE, skip: 0, append: false });
   }, [fetchCommits]);
 
   useEffect(() => {
@@ -96,12 +132,15 @@ export function useCommits() {
     maxLanes,
     branches,
     loading, 
+    loadingMore,
+    hasMore,
     error, 
     hasUncommitted,
     selectedBranch,
     setSelectedBranch,
     searchQuery,
     setSearchQuery,
-    refresh
+    refresh,
+    loadMore
   };
 }

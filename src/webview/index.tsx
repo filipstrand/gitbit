@@ -19,13 +19,16 @@ export const App = () => {
     maxLanes,
     branches, 
     loading, 
+    loadingMore,
+    hasMore,
     error, 
     hasUncommitted,
     selectedBranch, 
     setSelectedBranch, 
     searchQuery,
     setSearchQuery,
-    refresh 
+    refresh,
+    loadMore
   } = useCommits();
 
   // Dynamic graph width based on max lanes
@@ -647,6 +650,15 @@ export const App = () => {
     }
   }, [moveMode, actionStatus, movePending, endMoveDrag]);
 
+  const handleCommitListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (loading || loadingMore || !hasMore) return;
+    const el = e.currentTarget;
+    const thresholdPx = 180;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - thresholdPx) {
+      loadMore();
+    }
+  }, [hasMore, loadMore, loading, loadingMore]);
+
   // Replay-like post-drop animation: FLIP animate the rewritten rows into their new positions.
   useLayoutEffect(() => {
     const container = commitListRef.current;
@@ -799,7 +811,7 @@ export const App = () => {
               </div>
               <div className="header-cell">Message</div>
             </div>
-            <div className="commit-list" ref={commitListRef}>
+            <div className="commit-list" ref={commitListRef} onScroll={handleCommitListScroll}>
               {loading && commits.length === 0 && <div style={{ padding: '10px' }}>Loading...</div>}
               {error && <div style={{ padding: '10px', color: 'var(--vscode-errorForeground)' }}>{error}</div>}
               {(() => {
@@ -881,6 +893,11 @@ export const App = () => {
                   }}
                 >
                   Drop here to move to the end
+                </div>
+              )}
+              {loadingMore && (
+                <div style={{ padding: '8px 12px', opacity: 0.65, fontSize: '11px' }}>
+                  Loading more commits...
                 </div>
               )}
             </div>
