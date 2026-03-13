@@ -6,7 +6,9 @@ dist/
 out/
 
 # VS Code / Cursor
-.vscode/
+.vscode/*
+!.vscode/
+!.vscode/launch.json
 .vscode-test/
 
 # Extension package
