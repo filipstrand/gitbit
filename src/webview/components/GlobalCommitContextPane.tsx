@@ -82,17 +82,6 @@ export const GlobalCommitContextPane: React.FC<GlobalCommitContextPaneProps> = (
 
   const graphCommits = React.useMemo(() => GraphLayout.compute(context?.commits || []), [context?.commits]);
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString();
-  };
-
-  const formatFetchTime = (unixSeconds: number) => {
-    if (!unixSeconds) return 'Never fetched in this clone';
-    return new Date(unixSeconds * 1000).toLocaleString();
-  };
-
   if (!selection) {
     return (
       <div className="global-context-empty">
@@ -127,9 +116,6 @@ export const GlobalCommitContextPane: React.FC<GlobalCommitContextPaneProps> = (
       <div className="global-context-meta">
         <div className={`global-context-status ${context?.containsBaseBranch ? 'on-base' : 'off-base'}`}>
           {context?.containsBaseBranch ? 'On base branch' : 'Not on base branch'}
-        </div>
-        <div className="global-context-fetch-time">
-          Last fetch: {formatFetchTime(context?.lastFetchUnix || 0)}
         </div>
       </div>
 
@@ -168,7 +154,7 @@ export const GlobalCommitContextPane: React.FC<GlobalCommitContextPaneProps> = (
                   <span className="global-context-row-subject">{gc.subject}</span>
                 </div>
                 <div className="global-context-row-meta">
-                  {gc.authorName} · {formatDate(gc.authorDateIso)}
+                  {gc.authorName}
                 </div>
               </div>
             </div>

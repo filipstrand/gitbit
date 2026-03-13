@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Global search: selecting a commit now opens a right-pane commit placement view with a base-branch selector and branch containment verdict.
+- Global search: added a vertical mini graph (latest at top) to quickly inspect where a selected commit sits across branches.
+- Search: commit search now matches author name/email.
+- UI polish: removed time fields from the new global placement pane to reduce clutter.
+
 ## 0.3.0
 
 - Toolbar UX: Fetch is now an icon-only refresh control to reduce visual noise while keeping the same behavior.
