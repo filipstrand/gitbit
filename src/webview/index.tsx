@@ -117,7 +117,6 @@ export const App = () => {
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [selectedRepoRoot, setSelectedRepoRoot] = useState<string>(() => initialWebviewState.selectedRepoRoot || '');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [searchWidthPx, setSearchWidthPx] = useState<number | null>(null);
   const refreshRef = useRef(refresh);
 
   useEffect(() => {
@@ -175,45 +174,6 @@ export const App = () => {
       }
     })();
   }, [selectedRepoRoot, setSelectedBranch]);
-
-  // Compact search input: size to current text (not placeholder) to save horizontal space.
-  useLayoutEffect(() => {
-    const el = searchInputRef.current;
-    if (!el) return;
-
-    const value = searchQuery || '';
-    const style = window.getComputedStyle(el);
-
-    const font = style.font || [
-      style.fontStyle,
-      style.fontVariant,
-      style.fontWeight,
-      style.fontSize,
-      style.fontFamily
-    ].filter(Boolean).join(' ');
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.font = font;
-
-    // When empty, keep it compact (don't size to the long placeholder).
-    const text = value.length > 0 ? value : 'Search';
-    const textWidth = ctx.measureText(text).width;
-
-    const paddingLeft = parseFloat(style.paddingLeft || '0') || 0;
-    const paddingRight = parseFloat(style.paddingRight || '0') || 0;
-    const borderLeft = parseFloat(style.borderLeftWidth || '0') || 0;
-    const borderRight = parseFloat(style.borderRightWidth || '0') || 0;
-
-    // Reserve space for the clear "×" affordance when there's text.
-    const clearAffordance = value.length > 0 ? 18 : 0;
-    const extra = paddingLeft + paddingRight + borderLeft + borderRight + clearAffordance + 6;
-
-    const desired = Math.ceil(textWidth + extra);
-    const clamped = Math.max(120, Math.min(240, desired));
-    setSearchWidthPx(clamped);
-  }, [searchQuery]);
 
   const singleContextLocked = isGlobalSearchActive;
   const globalGraphGroups = React.useMemo(() => {
@@ -806,34 +766,30 @@ export const App = () => {
             disabled={singleContextLocked}
           />
           <div className="search-container">
-            <input 
-              ref={searchInputRef}
-              type="text" 
-              className="search-input" 
-              placeholder="Search message, hash..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={searchWidthPx ? { width: `${searchWidthPx}px` } : undefined}
-            />
-            {searchQuery && (
-              <span className="search-clear" onClick={() => setSearchQuery('')}>&times;</span>
-            )}
-            <div className="search-scope-toggle">
-              <button
-                className={`toolbar-button secondary search-scope-button ${searchScope === 'context' ? 'active' : ''}`}
-                onClick={() => setSearchScope('context')}
-                title="Search only current repo/filter context"
-              >
-                Here
-              </button>
-              <button
-                className={`toolbar-button secondary search-scope-button ${searchScope === 'global' ? 'active' : ''}`}
-                onClick={() => setSearchScope('global')}
-                title="Search across all discovered repos and branches"
-              >
-                Global
-              </button>
+            <div className="search-input-shell">
+              <input 
+                ref={searchInputRef}
+                type="text" 
+                className="search-input" 
+                placeholder="Search message, hash..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <span className="search-clear" onClick={() => setSearchQuery('')}>&times;</span>
+              )}
             </div>
+            <button
+              className={`search-scope-inline ${searchScope === 'global' ? 'active' : ''}`}
+              onClick={() => setSearchScope(searchScope === 'global' ? 'context' : 'global')}
+              title={
+                searchScope === 'global'
+                  ? 'Global search is enabled (click for current context only)'
+                  : 'Current context search (click to search globally)'
+              }
+            >
+              {searchScope === 'global' ? 'Global' : 'Here'}
+            </button>
           </div>
         </div>
       </div>
