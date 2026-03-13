@@ -5,6 +5,7 @@ interface RemoteSelectorProps {
   remotes: RemoteInfo[];
   onOpen?: () => void;
   onAddRemote: () => void;
+  onRemoveRemote: (name: string) => void;
   label?: string;
   className?: string;
   disabled?: boolean;
@@ -14,6 +15,7 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
   remotes,
   onOpen,
   onAddRemote,
+  onRemoveRemote,
   label = 'Remotes:',
   className = '',
   disabled = false
@@ -55,28 +57,36 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
         <div className="branch-selector-popup remote-selector-popup">
           <div className="branch-popup-content">
             <div className="branch-list">
-              {remotes.length === 0 ? (
-                <div className="remote-empty">No remotes configured</div>
-              ) : (
-                remotes.map((remote) => (
-                  <div key={remote.name} className="remote-item" title={`${remote.name}\n${remote.fetchUrl}`}>
-                    <div className="remote-name">{remote.name}</div>
-                    <div className="remote-url">fetch: {remote.fetchUrl}</div>
-                    <div className="remote-url">push: {remote.pushUrl}</div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="remote-actions">
               <button
-                className="toolbar-button secondary"
+                className="remote-add-row"
                 onClick={() => {
                   onAddRemote();
                   setIsOpen(false);
                 }}
               >
-                Add remote...
+                + Add new remote
               </button>
+              {remotes.length === 0 ? (
+                <div className="remote-empty">No remotes configured</div>
+              ) : (
+                remotes.map((remote) => (
+                  <div key={remote.name} className="remote-item" title={`${remote.name}\n${remote.url}`}>
+                    <button
+                      className="remote-remove-btn"
+                      title={`Remove ${remote.name}`}
+                      aria-label={`Remove ${remote.name}`}
+                      onClick={() => onRemoveRemote(remote.name)}
+                    >
+                      ×
+                    </button>
+                    <div className="remote-line">
+                      <span className="remote-name">{remote.name}</span>
+                      <span className="remote-sep">|</span>
+                      <span className="remote-url">{remote.url}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

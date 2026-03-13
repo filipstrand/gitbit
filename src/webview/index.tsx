@@ -915,6 +915,10 @@ export const App = () => {
               await gitAction('git/remoteAdd', {});
               await refreshRemotes();
             }}
+            onRemoveRemote={async (name) => {
+              await gitAction('git/remoteRemove', { name });
+              await refreshRemotes();
+            }}
             disabled={singleContextLocked}
           />
           <div className="search-container">

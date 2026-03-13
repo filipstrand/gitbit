@@ -1814,7 +1814,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               break;
             }
 
-            const byName = new Map<string, { name: string; fetchUrl: string; pushUrl: string }>();
+            const byName = new Map<string, { name: string; url: string }>();
             const lines = String(remotesRes.stdout || '')
               .split('\n')
               .map(l => l.trim())
@@ -1822,19 +1822,13 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             for (const line of lines) {
               const m = line.match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/);
               if (!m) continue;
-              const [, name, url, kind] = m;
-              const current = byName.get(name) || { name, fetchUrl: '', pushUrl: '' };
-              if (kind === 'fetch') current.fetchUrl = url;
-              if (kind === 'push') current.pushUrl = url;
+              const [, name, url] = m;
+              const current = byName.get(name) || { name, url: '' };
+              if (!current.url) current.url = url;
               byName.set(name, current);
             }
 
             const list = Array.from(byName.values())
-              .map(r => ({
-                ...r,
-                fetchUrl: r.fetchUrl || r.pushUrl,
-                pushUrl: r.pushUrl || r.fetchUrl
-              }))
               .sort((a, b) => {
                 if (a.name === 'origin' && b.name !== 'origin') return -1;
                 if (b.name === 'origin' && a.name !== 'origin') return 1;
@@ -1865,7 +1859,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
 
             const url = await vscode.window.showInputBox({
-              prompt: `Fetch URL for remote "${name}"`,
+              prompt: `URL for remote "${name}"`,
               placeHolder: 'git@github.com:owner/repo.git or https://github.com/owner/repo.git',
               validateInput: (value) => {
                 const v = String(value || '').trim();
@@ -1891,6 +1885,37 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
 
             this._notifyRepoChanged('remote added');
+            this._sendResponse(message.requestId, 'ok');
+            break;
+          }
+          case 'git/remoteRemove': {
+            if (!this._gitRunner) {
+              this._sendError(message.requestId, 'No repository found');
+              break;
+            }
+            const name = String(message.payload?.name || '').trim();
+            if (!name) {
+              this._sendError(message.requestId, 'Missing remote name');
+              break;
+            }
+
+            const confirm = await vscode.window.showWarningMessage(
+              `Remove remote "${name}"?`,
+              { modal: true },
+              'Remove'
+            );
+            if (confirm !== 'Remove') {
+              this._sendError(message.requestId, 'Remove remote cancelled');
+              break;
+            }
+
+            const removeRes = await this._gitRunner.run(['remote', 'remove', name]);
+            if (removeRes.exitCode !== 0) {
+              this._sendError(message.requestId, 'Failed to remove remote', removeRes.stderr);
+              break;
+            }
+
+            this._notifyRepoChanged('remote removed');
             this._sendResponse(message.requestId, 'ok');
             break;
           }

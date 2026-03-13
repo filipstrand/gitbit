@@ -237,10 +237,34 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Remotes' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add remote...' }));
+    fireEvent.click(screen.getByRole('button', { name: /\+ Add new remote/i }));
 
     await waitFor(() => {
       expect(mockRequest).toHaveBeenCalledWith('git/remoteAdd', {});
+    });
+  });
+
+  it('dispatches remove remote action from remotes dropdown', async () => {
+    mockRequest.mockImplementation(async (type: string) => {
+      if (type === 'repos/list') {
+        return [
+          { root: '/tmp/gitbit', label: 'gitbit', currentBranch: 'main', hasUncommittedChanges: false }
+        ];
+      }
+      if (type === 'repo/select') return 'ok';
+      if (type === 'git/remotesList') {
+        return [{ name: 'origin', url: 'git@github.com:filipstrand/gitbit.git' }];
+      }
+      return [];
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remotes' }));
+    const removeButton = await screen.findByRole('button', { name: 'Remove origin' });
+    fireEvent.click(removeButton);
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith('git/remoteRemove', { name: 'origin' });
     });
   });
 });

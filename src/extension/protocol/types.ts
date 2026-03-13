@@ -52,8 +52,7 @@ export interface RepoInfo {
 
 export interface RemoteInfo {
   name: string;
-  fetchUrl: string;
-  pushUrl: string;
+  url: string;
 }
 
 export interface GlobalSearchGroup {

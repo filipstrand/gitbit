@@ -495,7 +495,10 @@ body {
 }
 
 .remote-item {
-  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
 }
 
@@ -503,10 +506,22 @@ body {
   border-bottom: none;
 }
 
+.remote-line {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
 .remote-name {
   font-size: 12px;
   font-weight: 600;
-  margin-bottom: 3px;
+  white-space: nowrap;
+}
+
+.remote-sep {
+  opacity: 0.5;
 }
 
 .remote-url {
@@ -516,6 +531,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .remote-empty {
@@ -524,11 +540,39 @@ body {
   font-size: 12px;
 }
 
-.remote-actions {
-  display: flex;
-  justify-content: flex-end;
+.remote-remove-btn {
+  border: none;
+  background: transparent;
+  color: var(--vscode-errorForeground);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  opacity: 0.75;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.remote-remove-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--vscode-errorForeground) 18%, transparent);
+}
+
+.remote-add-row {
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
   padding: 8px 10px;
-  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.remote-add-row:hover {
+  background: var(--vscode-list-hoverBackground);
 }
 
 /* When there is only one repo, we render a non-clickable label (no caret). */
