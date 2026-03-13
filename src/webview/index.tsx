@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useCommits } from './state/useCommits';
+import { GraphLayout } from './state/GraphLayout';
 import { CommitRow } from './components/CommitRow';
 import { DetailsPane } from './components/DetailsPane';
 import { SquashPreview } from './components/SquashPreview';
@@ -27,6 +28,13 @@ export const App = () => {
     setSelectedBranch, 
     searchQuery,
     setSearchQuery,
+    searchScope,
+    setSearchScope,
+    isGlobalSearchActive,
+    globalGroups,
+    globalLoading,
+    globalTotalMatches,
+    globalScannedRepos,
     refresh,
     loadMore
   } = useCommits();
@@ -206,6 +214,24 @@ export const App = () => {
     const clamped = Math.max(120, Math.min(240, desired));
     setSearchWidthPx(clamped);
   }, [searchQuery]);
+
+  const singleContextLocked = isGlobalSearchActive;
+  const globalGraphGroups = React.useMemo(() => {
+    if (!isGlobalSearchActive) return [] as Array<{ repoRoot: string; repoLabel: string; commits: any[] }>;
+    return globalGroups.map(group => ({
+      repoRoot: group.repoRoot,
+      repoLabel: group.repoLabel,
+      commits: GraphLayout.compute(group.commits)
+    }));
+  }, [globalGroups, isGlobalSearchActive]);
+
+  useEffect(() => {
+    if (singleContextLocked) {
+      setMoveMode(false);
+      setDraggedShas([]);
+      setDropTargetSha(null);
+    }
+  }, [singleContextLocked]);
 
   // Auto-focus the latest commit or uncommitted changes on initial load
   useEffect(() => {
@@ -487,6 +513,7 @@ export const App = () => {
   };
 
   const gitAction = async <T = any>(type: string, payload: any): Promise<T | undefined> => {
+    if (singleContextLocked && type.startsWith('git/')) return undefined;
     if (actionStatus[type] === 'running') return;
     setActionStatus(prev => ({ ...prev, [type]: 'running' }));
     try {
@@ -651,13 +678,14 @@ export const App = () => {
   }, [moveMode, actionStatus, movePending, endMoveDrag]);
 
   const handleCommitListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (singleContextLocked) return;
     if (loading || loadingMore || !hasMore) return;
     const el = e.currentTarget;
     const thresholdPx = 180;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - thresholdPx) {
       loadMore();
     }
-  }, [hasMore, loadMore, loading, loadingMore]);
+  }, [singleContextLocked, hasMore, loadMore, loading, loadingMore]);
 
   // Replay-like post-drop animation: FLIP animate the rewritten rows into their new positions.
   useLayoutEffect(() => {
@@ -710,7 +738,7 @@ export const App = () => {
               className={`toolbar-button secondary ${actionStatus['git/fetch'] === 'success' ? 'action-success' : ''}`}
               onClick={() => gitAction('git/fetch', {})}
               title="Fetch all branches and prune"
-              disabled={actionStatus['git/fetch'] === 'running'}
+              disabled={singleContextLocked || actionStatus['git/fetch'] === 'running'}
             >
               <span className={`button-icon ${actionStatus['git/fetch'] === 'running' ? 'spin' : ''}`}>
                 {actionStatus['git/fetch'] === 'success' ? '✓' : '↻'}
@@ -721,7 +749,7 @@ export const App = () => {
               className={`toolbar-button secondary ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''}`}
               onClick={() => gitAction('git/pull', {})}
               title="Pull changes from upstream"
-              disabled={actionStatus['git/pull'] === 'running'}
+              disabled={singleContextLocked || actionStatus['git/pull'] === 'running'}
             >
               <span className="button-icon">↓</span>
               {actionStatus['git/pull'] === 'running' ? 'Pulling…' : 'Pull'}
@@ -730,7 +758,7 @@ export const App = () => {
               className={`toolbar-button secondary push-button ${isOptionPressed ? 'force-push' : ''} ${actionStatus['git/push'] === 'success' ? 'action-success' : ''}`} 
               onClick={() => gitAction('git/push', { force: isOptionPressed })}
               title={isOptionPressed ? 'Force push changes (overwrites remote!)' : 'Push changes to upstream'}
-              disabled={actionStatus['git/push'] === 'running'}
+              disabled={singleContextLocked || actionStatus['git/push'] === 'running'}
             >
               <span className="button-icon">↑</span>
               {actionStatus['git/push'] === 'running'
@@ -746,6 +774,7 @@ export const App = () => {
             selectedRoot={selectedRepoRoot}
             onSelect={setSelectedRepoRoot}
             onOpen={refreshRepos}
+            disabled={singleContextLocked}
           />
           <BranchSelector 
             label="Branch:"
@@ -756,6 +785,7 @@ export const App = () => {
             showAllOption={false}
             showHeadOption={false}
             enableHoverActions
+            disabled={singleContextLocked}
             onHoverAction={(action, branch) => {
               if (action === 'checkout') {
                 gitAction('git/checkout', { sha: branch.name });
@@ -773,6 +803,7 @@ export const App = () => {
             branches={branches}
             selectedBranch={selectedBranch}
             onSelect={setSelectedBranch}
+            disabled={singleContextLocked}
           />
           <div className="search-container">
             <input 
@@ -787,9 +818,33 @@ export const App = () => {
             {searchQuery && (
               <span className="search-clear" onClick={() => setSearchQuery('')}>&times;</span>
             )}
+            <div className="search-scope-toggle">
+              <button
+                className={`toolbar-button secondary search-scope-button ${searchScope === 'context' ? 'active' : ''}`}
+                onClick={() => setSearchScope('context')}
+                title="Search only current repo/filter context"
+              >
+                Here
+              </button>
+              <button
+                className={`toolbar-button secondary search-scope-button ${searchScope === 'global' ? 'active' : ''}`}
+                onClick={() => setSearchScope('global')}
+                title="Search across all discovered repos and branches"
+              >
+                Global
+              </button>
+            </div>
           </div>
         </div>
       </div>
+      {isGlobalSearchActive && (
+        <div className="global-search-banner">
+          <span>Global search results ({globalTotalMatches} matches in {globalScannedRepos} repos). Actions are disabled.</span>
+          <button className="toolbar-button secondary" onClick={() => setSearchScope('context')}>
+            Return to current context
+          </button>
+        </div>
+      )}
       <div className="main-content" ref={mainContentRef}>
         <div className="left-pane" ref={leftPaneRef} style={{ width: `${ratio * 100}%`, flex: 'none' }}>
           <div style={{ width: 'fit-content', minWidth: '100%', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -812,93 +867,118 @@ export const App = () => {
               <div className="header-cell">Message</div>
             </div>
             <div className="commit-list" ref={commitListRef} onScroll={handleCommitListScroll}>
-              {loading && commits.length === 0 && <div style={{ padding: '10px' }}>Loading...</div>}
+              {loading && commits.length === 0 && !isGlobalSearchActive && <div style={{ padding: '10px' }}>Loading...</div>}
+              {globalLoading && isGlobalSearchActive && <div style={{ padding: '10px' }}>Searching all repos...</div>}
               {error && <div style={{ padding: '10px', color: 'var(--vscode-errorForeground)' }}>{error}</div>}
-              {(() => {
-                const gapCss = 'calc(var(--row-height) * 3)';
-                const showSlots = moveMode && draggedShas.length > 0;
+              {isGlobalSearchActive ? (
+                <>
+                  {globalGraphGroups.length === 0 && !globalLoading && (
+                    <div style={{ padding: '10px', opacity: 0.7 }}>No matches found.</div>
+                  )}
+                  {globalGraphGroups.map(group => (
+                    <React.Fragment key={group.repoRoot}>
+                      <div className="global-search-group-separator">{group.repoLabel}</div>
+                      {group.commits.map((commit: any) => (
+                        <CommitRow
+                          key={`${group.repoRoot}:${commit.sha}`}
+                          commit={commit}
+                          isSelected={false}
+                          onSelect={() => {}}
+                          onContextMenu={() => {}}
+                        />
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {(() => {
+                    const gapCss = 'calc(var(--row-height) * 3)';
+                    const showSlots = moveMode && draggedShas.length > 0;
 
-                return commits.flatMap((commit, index) => {
-                  const nextSha = commits[index + 1]?.sha ?? null;
-                  const isTarget = dropTargetSha === commit.sha;
-                  const slot = showSlots && isTarget ? (
+                    return commits.flatMap((commit, index) => {
+                      const nextSha = commits[index + 1]?.sha ?? null;
+                      const isTarget = dropTargetSha === commit.sha;
+                      const slot = showSlots && isTarget ? (
+                        <div
+                          key={`slot-${commit.sha}`}
+                          className="commit-drop-slot"
+                          style={{ ['--drop-gap' as any]: gapCss } as React.CSSProperties}
+                          onDragOver={(e) => {
+                            if (draggedShas.length === 0) return;
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            setDropTarget(commit.sha);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dropMoveBefore(commit.sha, draggedShas);
+                            endMoveDrag();
+                          }}
+                          title="Drop between commits"
+                        />
+                      ) : null;
+
+                      return [
+                        slot,
+                        <CommitRow
+                          key={commit.sha}
+                          commit={commit}
+                          isSelected={selectedShas.includes(commit.sha)}
+                          onSelect={handleSelect}
+                          onContextMenu={handleContextMenu}
+                          onDiscardAllUncommitted={commit.sha === 'UNCOMMITTED' ? (() => gitAction('git/discardAll', {})) : undefined}
+                          rowRef={(el) => {
+                            const map = commitRowElsRef.current;
+                            if (!el) {
+                              map.delete(commit.sha);
+                              return;
+                            }
+                            map.set(commit.sha, el);
+                          }}
+                          getDragDirection={() => moveDragDirectionRef.current}
+                          getCurrentDropTarget={() => dropTargetSha}
+                          nextSha={nextSha}
+                          moveMode={moveMode}
+                          draggedShas={draggedShas}
+                          isDropTarget={isTarget}
+                          onBeginDrag={beginMoveDrag}
+                          onDropBefore={(before, shas) => dropMoveBefore(before, shas)}
+                          onHoverDropTarget={setDropTarget}
+                          onDragFinished={endMoveDrag}
+                          movePending={movePending}
+                          moveFailed={moveFailedShas.includes(commit.sha)}
+                        />
+                      ].filter(Boolean) as any[];
+                    });
+                  })()}
+                  {moveMode && (
                     <div
-                      key={`slot-${commit.sha}`}
-                      className="commit-drop-slot"
-                      style={{ ['--drop-gap' as any]: gapCss } as React.CSSProperties}
+                      className={`commit-drop-end ${dropTargetSha === '__END__' ? 'drop-target' : ''}`}
+                      style={{ ['--drop-gap' as any]: 'calc(var(--row-height) * 3)' } as React.CSSProperties}
                       onDragOver={(e) => {
                         if (draggedShas.length === 0) return;
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
-                        setDropTarget(commit.sha);
+                        setDropTarget('__END__');
                       }}
                       onDrop={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        dropMoveBefore(commit.sha, draggedShas);
+                        dropMoveBefore(null, draggedShas);
                         endMoveDrag();
                       }}
-                      title="Drop between commits"
-                    />
-                  ) : null;
-
-                  return [
-                    slot,
-                <CommitRow 
-                  key={commit.sha}
-                  commit={commit}
-                  isSelected={selectedShas.includes(commit.sha)}
-                  onSelect={handleSelect}
-                  onContextMenu={handleContextMenu}
-                      onDiscardAllUncommitted={commit.sha === 'UNCOMMITTED' ? (() => gitAction('git/discardAll', {})) : undefined}
-                      rowRef={(el) => {
-                        const map = commitRowElsRef.current;
-                        if (!el) {
-                          map.delete(commit.sha);
-                          return;
-                        }
-                        map.set(commit.sha, el);
-                      }}
-                      getDragDirection={() => moveDragDirectionRef.current}
-                      getCurrentDropTarget={() => dropTargetSha}
-                      nextSha={nextSha}
-                      moveMode={moveMode}
-                      draggedShas={draggedShas}
-                      isDropTarget={isTarget}
-                      onBeginDrag={beginMoveDrag}
-                      onDropBefore={(before, shas) => dropMoveBefore(before, shas)}
-                      onHoverDropTarget={setDropTarget}
-                      onDragFinished={endMoveDrag}
-                      movePending={movePending}
-                      moveFailed={moveFailedShas.includes(commit.sha)}
-                    />
-                  ].filter(Boolean) as any[];
-                });
-              })()}
-              {moveMode && (
-                <div
-                  className={`commit-drop-end ${dropTargetSha === '__END__' ? 'drop-target' : ''}`}
-                  style={{ ['--drop-gap' as any]: 'calc(var(--row-height) * 3)' } as React.CSSProperties}
-                  onDragOver={(e) => {
-                    if (draggedShas.length === 0) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    setDropTarget('__END__');
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropMoveBefore(null, draggedShas);
-                    endMoveDrag();
-                  }}
-                >
-                  Drop here to move to the end
-                </div>
-              )}
-              {loadingMore && (
-                <div style={{ padding: '8px 12px', opacity: 0.65, fontSize: '11px' }}>
-                  Loading more commits...
-                </div>
+                    >
+                      Drop here to move to the end
+                    </div>
+                  )}
+                  {loadingMore && (
+                    <div style={{ padding: '8px 12px', opacity: 0.65, fontSize: '11px' }}>
+                      Loading more commits...
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -911,7 +991,13 @@ export const App = () => {
           }}
         />
         <div className={`right-pane ${selectedShas.length === 1 && selectedShas[0] === 'UNCOMMITTED' ? 'uncommitted' : ''}`}>
-          {moveMode ? (
+          {isGlobalSearchActive ? (
+            <div style={{ padding: '16px', opacity: 0.8, lineHeight: 1.45 }}>
+              Global search mode is active.
+              <br />
+              Switch back to a single repo/branch context to enable commit actions and details.
+            </div>
+          ) : moveMode ? (
             <div style={{ padding: '16px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Move mode</div>
               <div style={{ fontSize: '12px', opacity: 0.75, lineHeight: 1.4 }}>
@@ -931,7 +1017,7 @@ export const App = () => {
           )}
         </div>
       </div>
-      {contextMenu && (
+      {!isGlobalSearchActive && contextMenu && (
         <ContextMenu 
           x={contextMenu.x} 
           y={contextMenu.y} 

@@ -50,6 +50,13 @@ describe('App', () => {
       setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
+      searchScope: 'context',
+      setSearchScope: vi.fn(),
+      isGlobalSearchActive: false,
+      globalGroups: [],
+      globalLoading: false,
+      globalTotalMatches: 0,
+      globalScannedRepos: 0,
       refresh: mockRefresh,
       loadMore: mockLoadMore
     });
@@ -149,6 +156,13 @@ describe('App', () => {
       setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
+      searchScope: 'context',
+      setSearchScope: vi.fn(),
+      isGlobalSearchActive: false,
+      globalGroups: [],
+      globalLoading: false,
+      globalTotalMatches: 0,
+      globalScannedRepos: 0,
       refresh: mockRefresh,
       loadMore: mockLoadMore
     });
@@ -197,6 +211,13 @@ describe('App', () => {
       setSelectedBranch: setSelectedBranchSpy,
       searchQuery: '',
       setSearchQuery: vi.fn(),
+      searchScope: 'context',
+      setSearchScope: vi.fn(),
+      isGlobalSearchActive: false,
+      globalGroups: [],
+      globalLoading: false,
+      globalTotalMatches: 0,
+      globalScannedRepos: 0,
       refresh: mockRefresh,
       loadMore: mockLoadMore
     });

@@ -18,6 +18,7 @@ interface BranchSelectorProps {
   enableHoverActions?: boolean;
   autoSizeTrigger?: boolean;
   onHoverAction?: (action: BranchHoverAction, branch: Branch) => void;
+  disabled?: boolean;
 }
 
 export const BranchSelector: React.FC<BranchSelectorProps> = ({ 
@@ -30,7 +31,8 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   className = '',
   enableHoverActions = false,
   autoSizeTrigger = false,
-  onHoverAction
+  onHoverAction,
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,6 +110,10 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   useEffect(() => {
     if (!isOpen) setHoveredBranch(null);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (disabled) setIsOpen(false);
+  }, [disabled]);
 
   useEffect(() => {
     if (!hoveredBranch) {
@@ -237,19 +243,22 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   }, [autoSizeTrigger, currentLabel]);
 
   return (
-    <div className={`branch-selector-container ${className}`} ref={containerRef}>
+    <div className={`branch-selector-container ${className} ${disabled ? 'is-disabled' : ''}`} ref={containerRef}>
       <span className="toolbar-label">{label}</span>
       <div 
         ref={triggerRef}
         className="branch-selector-trigger" 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
         title={currentLabel}
         style={triggerWidthPx ? { width: `${triggerWidthPx}px` } : undefined}
       >
         {currentLabel}
       </div>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="branch-selector-popup">
           <div className="branch-search-container">
             <span className="branch-search-icon">🔍</span>

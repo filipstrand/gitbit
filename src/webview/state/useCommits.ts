@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Commit, Branch } from '../../extension/protocol/types';
+import { Commit, Branch, GlobalSearchGroup, GlobalSearchResponse } from '../../extension/protocol/types';
 import { request } from './vscode';
 import { GraphLayout, GraphCommit } from './GraphLayout';
 
 const PAGE_SIZE = 500;
+type SearchScope = 'context' | 'global';
 
 export function useCommits() {
   const [commits, setCommits] = useState<Commit[]>([]);
@@ -15,7 +16,16 @@ export function useCommits() {
   const [error, setError] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string>('HEAD');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchScope, setSearchScope] = useState<SearchScope>('context');
+  const [globalGroups, setGlobalGroups] = useState<GlobalSearchGroup[]>([]);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalTotalMatches, setGlobalTotalMatches] = useState(0);
+  const [globalScannedRepos, setGlobalScannedRepos] = useState(0);
   const hasUncommitted = useMemo(() => commits.some(c => c.sha === 'UNCOMMITTED'), [commits]);
+  const isGlobalSearchActive = useMemo(
+    () => searchScope === 'global' && searchQuery.trim().length > 0,
+    [searchScope, searchQuery]
+  );
 
   const filteredCommits = useMemo(() => {
     if (!searchQuery) return commits;
@@ -104,6 +114,42 @@ export function useCommits() {
   }, [fetchBranches]);
 
   useEffect(() => {
+    if (!isGlobalSearchActive) {
+      setGlobalGroups([]);
+      setGlobalLoading(false);
+      setGlobalTotalMatches(0);
+      setGlobalScannedRepos(0);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setGlobalLoading(true);
+      try {
+        const res = await request<GlobalSearchResponse>('search/global', {
+          query: searchQuery.trim()
+        });
+        if (cancelled) return;
+        setGlobalGroups(Array.isArray(res.groups) ? res.groups : []);
+        setGlobalTotalMatches(Number(res.totalMatches || 0));
+        setGlobalScannedRepos(Number(res.scannedRepos || 0));
+      } catch {
+        if (cancelled) return;
+        setGlobalGroups([]);
+        setGlobalTotalMatches(0);
+        setGlobalScannedRepos(0);
+      } finally {
+        if (!cancelled) setGlobalLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isGlobalSearchActive, searchQuery]);
+
+  useEffect(() => {
     setHasMore(true);
     setNextSkip(PAGE_SIZE);
     fetchCommits({ limit: PAGE_SIZE, skip: 0, append: false });
@@ -140,6 +186,13 @@ export function useCommits() {
     setSelectedBranch,
     searchQuery,
     setSearchQuery,
+    searchScope,
+    setSearchScope,
+    isGlobalSearchActive,
+    globalGroups,
+    globalLoading,
+    globalTotalMatches,
+    globalScannedRepos,
     refresh,
     loadMore
   };

@@ -5,7 +5,7 @@ import * as os from 'os';
 import { GitRunner } from './git/GitRunner';
 import { GitLogParser } from './git/GitLogParser';
 import { getDefaultSquashTitle, parseUncommittedChangesFromPorcelain } from './git/changeParsing';
-import { RequestMessage, ResponseMessage, RepoInfo } from './protocol/types';
+import { RequestMessage, ResponseMessage, RepoInfo, GlobalSearchGroup, GlobalSearchResponse } from './protocol/types';
 import { GitContentProvider } from './git/GitContentProvider';
 
 export class GitGraphViewProvider implements vscode.WebviewViewProvider {
@@ -186,6 +186,45 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async _searchCommitsInRepo(
+    root: string,
+    label: string,
+    query: string,
+    limitPerRepo: number,
+    maxMatchesPerRepo: number
+  ): Promise<GlobalSearchGroup | null> {
+    const q = query.toLowerCase();
+    const runner = this._gitRunnersByRoot.get(root) || new GitRunner(root);
+    if (!this._gitRunnersByRoot.has(root)) this._gitRunnersByRoot.set(root, runner);
+
+    const logFormat = '%H%x09%P%x09%an%x09%ae%x09%ad%x09%s%x09%D';
+    const args = [
+      'log',
+      '--all',
+      '--topo-order',
+      '-n', `${limitPerRepo}`,
+      '--date=iso-strict',
+      `--pretty=format:${logFormat}`
+    ];
+    const { stdout, exitCode } = await runner.run(args);
+    if (exitCode !== 0) return null;
+
+    const commits = GitLogParser.parseLog(stdout)
+      .map(c => ({
+        ...c,
+        refs: GitLogParser.parseDecorations(c.decorations)
+      }))
+      .filter(c =>
+        c.subject.toLowerCase().includes(q) ||
+        c.sha.toLowerCase().includes(q) ||
+        c.decorations.toLowerCase().includes(q)
+      )
+      .slice(0, maxMatchesPerRepo);
+
+    if (commits.length === 0) return null;
+    return { repoRoot: root, repoLabel: label, commits };
+  }
+
   private _notifyRepoChanged(reason?: string) {
     if (this._repoChangedTimer) clearTimeout(this._repoChangedTimer);
     this._repoChangedTimer = setTimeout(() => {
@@ -280,6 +319,42 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             await this._resolveRepo();
             this._sendResponse(message.requestId, { root: this._gitRunner ? 'ok' : 'error' });
             break;
+          case 'search/global': {
+            const query = String(message.payload?.query || '').trim();
+            if (!query) {
+              const empty: GlobalSearchResponse = {
+                query,
+                groups: [],
+                totalMatches: 0,
+                scannedRepos: 0
+              };
+              this._sendResponse(message.requestId, empty);
+              break;
+            }
+
+            const limitPerRepo = Math.max(100, Number(message.payload?.limitPerRepo || 1200));
+            const maxMatchesPerRepo = Math.max(20, Number(message.payload?.maxMatchesPerRepo || 200));
+            const repos = await this._discoverRepos(false);
+            const fallbackRoot = this._currentRepoRoot();
+            if (fallbackRoot && !repos.some(r => r.root === fallbackRoot)) {
+              repos.push({ root: fallbackRoot, label: path.basename(fallbackRoot) || fallbackRoot });
+            }
+
+            const groups = (await Promise.all(
+              repos.map(repo =>
+                this._searchCommitsInRepo(repo.root, repo.label, query, limitPerRepo, maxMatchesPerRepo)
+              )
+            )).filter((g): g is GlobalSearchGroup => !!g);
+
+            const response: GlobalSearchResponse = {
+              query,
+              groups,
+              totalMatches: groups.reduce((sum, g) => sum + g.commits.length, 0),
+              scannedRepos: repos.length
+            };
+            this._sendResponse(message.requestId, response);
+            break;
+          }
           case 'commits/list':
             if (!this._gitRunner) {
               await this._resolveRepo();

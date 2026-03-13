@@ -45,6 +45,19 @@ export interface RepoInfo {
   currentBranch?: string;
 }
 
+export interface GlobalSearchGroup {
+  repoRoot: string;
+  repoLabel: string;
+  commits: Commit[];
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  groups: GlobalSearchGroup[];
+  totalMatches: number;
+  scannedRepos: number;
+}
+
 export type SelectionMode = 'single' | 'range';
 
 export interface SelectionState {

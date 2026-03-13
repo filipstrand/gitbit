@@ -175,6 +175,14 @@ body {
   background-color: var(--vscode-list-hoverBackground);
 }
 
+.branch-selector-container.is-disabled {
+  opacity: 0.5;
+}
+
+.branch-selector-container.is-disabled .branch-selector-trigger {
+  cursor: not-allowed;
+}
+
 .branch-selector-popup {
   position: absolute;
   top: 100%;
@@ -449,6 +457,7 @@ body {
   display: flex;
   align-items: center;
   position: relative;
+  gap: 6px;
 }
 
 .search-input {
@@ -479,6 +488,33 @@ body {
 
 .search-clear:hover {
   opacity: 1;
+}
+
+.search-scope-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.search-scope-button {
+  padding: 2px 7px;
+}
+
+.search-scope-button.active {
+  border-color: var(--vscode-focusBorder);
+  background-color: color-mix(in srgb, var(--vscode-focusBorder) 16%, transparent);
+}
+
+.global-search-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--vscode-focusBorder) 10%, transparent);
+  font-size: 11px;
 }
 
 .main-content {
@@ -689,6 +725,21 @@ body {
 .commit-row.selected {
   background-color: var(--vscode-list-activeSelectionBackground);
   color: var(--vscode-list-activeSelectionForeground);
+}
+
+.global-search-group-separator {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 3px 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--vscode-descriptionForeground);
+  background-color: color-mix(in srgb, var(--vscode-panel-background) 88%, transparent);
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
 }
 
 .cell {

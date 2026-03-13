@@ -8,6 +8,7 @@ interface RepoSelectorProps {
   onOpen?: () => void;
   label?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export const RepoSelector: React.FC<RepoSelectorProps> = ({
@@ -16,7 +17,8 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   onSelect,
   onOpen,
   label = 'Repo:',
-  className = ''
+  className = '',
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,6 +42,10 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   useEffect(() => {
     if (!isOpen) setSearchQuery('');
   }, [isOpen]);
+
+  useEffect(() => {
+    if (disabled) setIsOpen(false);
+  }, [disabled]);
 
   const getBranch = (repo: RepoInfo) => (repo.currentBranch || '').trim();
   const formatRepoLabelForSearch = (repo: RepoInfo) => {
@@ -69,7 +75,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   // If there's exactly one repo, don't show a dropdown — just display the repo name.
   if (repos.length === 1) {
     return (
-      <div className={`branch-selector-container ${className}`} ref={containerRef}>
+      <div className={`branch-selector-container ${className} ${disabled ? 'is-disabled' : ''}`} ref={containerRef}>
         {!!label && <span className="toolbar-label">{label}</span>}
         <span
           className={`branch-selector-trigger repo-selector-static ${selectedRepoIsDirty ? 'repo-dirty' : ''}`}
@@ -82,17 +88,18 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   }
 
   return (
-    <div className={`branch-selector-container ${className}`} ref={containerRef}>
+    <div className={`branch-selector-container ${className} ${disabled ? 'is-disabled' : ''}`} ref={containerRef}>
       {!!label && <span className="toolbar-label">{label}</span>}
       <button
         className={`branch-selector-trigger ${selectedRepoIsDirty ? 'repo-dirty' : ''}`}
         onClick={() => {
+          if (disabled) return;
           const next = !isOpen;
           if (next) onOpen?.();
           setIsOpen(next);
         }}
         title={selectedRoot || ''}
-        disabled={repos.length === 0}
+        disabled={disabled || repos.length === 0}
       >
         {currentLabel}
       </button>
