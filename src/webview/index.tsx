@@ -127,7 +127,7 @@ export const App = () => {
   const [contextPicker, setContextPicker] = useState<{
     selection: GlobalCommitSelection;
     branches: string[];
-    anchorRect?: { left: number; right: number; bottom: number; width: number };
+    anchorRect?: { top: number; left: number; right: number; bottom: number; width: number };
   } | null>(null);
   const [contextPickerQuery, setContextPickerQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -712,23 +712,71 @@ export const App = () => {
     setSelectedBranch(filterBranch);
   }, [setSearchQuery, setSearchScope, setSelectedBranch]);
 
-  const rankContextBranch = useCallback((branch: string) => {
-    const b = branch.toLowerCase();
-    if (b === 'main' || b === 'origin/main') return 0;
-    if (b === 'master' || b === 'origin/master') return 1;
-    if (b.endsWith('/main') || b.endsWith('/master')) return 2;
-    if (b.includes('main')) return 3;
-    return 4;
+  const normalizeBranchName = useCallback((branch: string) => {
+    const trimmed = branch.trim();
+    return trimmed.replace(/^origin\//, '');
   }, []);
 
-  const prioritizeContextBranches = useCallback((branches: string[]) => {
-    return [...branches].sort((a, b) => {
-      const ra = rankContextBranch(a);
-      const rb = rankContextBranch(b);
+  const isMainLikeBranch = useCallback((branch: string) => {
+    const b = normalizeBranchName(branch).toLowerCase();
+    return b === 'main' || b === 'master';
+  }, [normalizeBranchName]);
+
+  const isFeatureLikeBranch = useCallback((branch: string) => {
+    const b = normalizeBranchName(branch).toLowerCase();
+    return /(^|\/)(feature|feat|bugfix|fix|task|story|spike|experiment|epic|ticket)[/-]/.test(b);
+  }, [normalizeBranchName]);
+
+  const isFutureMaintenanceBranch = useCallback((branch: string) => {
+    const b = normalizeBranchName(branch).toLowerCase();
+    return /(^|\/)(release|hotfix|support|stabilize|stabilization|chore)[/-]/.test(b);
+  }, [normalizeBranchName]);
+
+  const prioritizeContextBranches = useCallback((
+    locals: string[],
+    remotes: string[],
+    resolvedBaseBranch: string,
+    commitRefNames: string[]
+  ) => {
+    type Candidate = { name: string; source: 'local' | 'remote'; normalized: string };
+    const all: Candidate[] = [
+      ...locals.map(name => ({ name, source: 'local' as const, normalized: normalizeBranchName(name) })),
+      ...remotes.map(name => ({ name, source: 'remote' as const, normalized: normalizeBranchName(name) }))
+    ];
+    const refSet = new Set(commitRefNames.map(r => normalizeBranchName(r)));
+    const resolvedNorm = normalizeBranchName(resolvedBaseBranch || '');
+
+    const rank = (candidate: Candidate) => {
+      const lower = candidate.normalized.toLowerCase();
+      const isMain = isMainLikeBranch(candidate.name);
+      const isFeature = isFeatureLikeBranch(candidate.name);
+      const isMaintenance = isFutureMaintenanceBranch(candidate.name);
+      const isRefHit = refSet.has(candidate.normalized);
+      const isResolvedBase = resolvedNorm.length > 0 && candidate.normalized === resolvedNorm;
+      const isLocal = candidate.source === 'local';
+
+      if (isMain) return 0;
+      if (isFeature && isRefHit && isLocal) return 1;
+      if (isFeature && isLocal) return 2;
+      if (isRefHit && isLocal) return 3;
+      if (isResolvedBase && isLocal) return 4;
+      if (isLocal && !isMaintenance) return 5;
+      if (isFeature) return 6;
+      if (isResolvedBase) return 7;
+      if (isMaintenance) return 9;
+      if (lower === 'head') return 10;
+      return 8;
+    };
+
+    return [...all].sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
       if (ra !== rb) return ra - rb;
-      return a.localeCompare(b);
-    });
-  }, [rankContextBranch]);
+      if (a.normalized !== b.normalized) return a.normalized.localeCompare(b.normalized);
+      if (a.source !== b.source) return a.source === 'local' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    }).map(c => c.name);
+  }, [isFeatureLikeBranch, isFutureMaintenanceBranch, isMainLikeBranch, normalizeBranchName]);
 
   const handleJumpToGlobalCommitContext = useCallback(async (anchorRect?: DOMRect) => {
     if (!selectedGlobalCommit) return;
@@ -748,8 +796,13 @@ export const App = () => {
 
       const locals = (context.containingLocalBranches || []).filter(Boolean);
       const remotes = (context.containingRemoteBranches || []).filter(Boolean);
-      const combined = Array.from(new Set<string>([...locals, ...remotes]));
-      candidateBranches = prioritizeContextBranches(combined);
+      const commitRefNames = (selection.commit.refs || []).map(ref => String(ref.name || '')).filter(Boolean);
+      candidateBranches = prioritizeContextBranches(
+        locals,
+        remotes,
+        context.resolvedBaseBranch || '',
+        commitRefNames
+      );
 
       if (context.resolvedBaseBranch && locals.includes(context.resolvedBaseBranch)) {
         preferredBranch = context.resolvedBaseBranch;
@@ -775,6 +828,7 @@ export const App = () => {
         ? {
             left: anchorRect.left,
             right: anchorRect.right,
+            top: anchorRect.top,
             bottom: anchorRect.bottom,
             width: anchorRect.width
           }
