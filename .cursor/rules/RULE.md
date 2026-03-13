@@ -14,7 +14,7 @@
 When performing a release:
 1. Ensure `package.json` has the correct version.
 2. Ensure `CHANGELOG.md` reflects the changes in the new version.
-3. The release should be automated using the `/release` command.
+3. Use the project release skill at `.cursor/skills/release-workflow/SKILL.md`.
 4. The process must:
     - Delete any existing `.vsix` files.
     - Build and package the extension.
