@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Global commit placement: branch lists are now compact to reduce noise, showing local/remote counts and only a short preview with a `+N more` suffix.
+
 ## 0.3.1
 
 - Global search: selecting a commit now opens a right-pane commit placement view with a base-branch selector and branch containment verdict.

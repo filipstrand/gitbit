@@ -81,6 +81,12 @@ export const GlobalCommitContextPane: React.FC<GlobalCommitContextPaneProps> = (
   }, [selection, baseBranch]);
 
   const graphCommits = React.useMemo(() => GraphLayout.compute(context?.commits || []), [context?.commits]);
+  const summarizeBranches = React.useCallback((branches: string[], limit = 3) => {
+    if (!branches || branches.length === 0) return 'none';
+    const shown = branches.slice(0, limit);
+    const remaining = branches.length - shown.length;
+    return `${shown.join(', ')}${remaining > 0 ? ` +${remaining} more` : ''}`;
+  }, []);
 
   if (!selection) {
     return (
@@ -122,11 +128,13 @@ export const GlobalCommitContextPane: React.FC<GlobalCommitContextPaneProps> = (
       <div className="global-context-branches">
         <div>
           <strong>Local:</strong>{' '}
-          {context?.containingLocalBranches.length ? context.containingLocalBranches.join(', ') : 'none'}
+          {context ? `(${context.containingLocalBranches.length}) ` : ''}
+          {context ? summarizeBranches(context.containingLocalBranches) : 'none'}
         </div>
         <div>
           <strong>Remote:</strong>{' '}
-          {context?.containingRemoteBranches.length ? context.containingRemoteBranches.join(', ') : 'none'}
+          {context ? `(${context.containingRemoteBranches.length}) ` : ''}
+          {context ? summarizeBranches(context.containingRemoteBranches) : 'none'}
         </div>
       </div>
 
