@@ -63,6 +63,19 @@ export interface GlobalSearchResponse {
   scannedRepos: number;
 }
 
+export interface GlobalCommitContextResponse {
+  repoRoot: string;
+  sha: string;
+  baseBranchOptions: string[];
+  defaultBaseBranch: string;
+  resolvedBaseBranch: string;
+  containsBaseBranch: boolean;
+  containingLocalBranches: string[];
+  containingRemoteBranches: string[];
+  lastFetchUnix: number;
+  commits: Commit[];
+}
+
 export type SelectionMode = 'single' | 'range';
 
 export interface SelectionState {

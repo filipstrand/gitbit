@@ -1334,3 +1334,174 @@ body {
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
+.global-context-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.global-context-empty,
+.global-context-loading,
+.global-context-error {
+  padding: 14px 16px;
+  opacity: 0.8;
+  line-height: 1.4;
+  font-size: 12px;
+}
+
+.global-context-error {
+  color: var(--vscode-errorForeground);
+}
+
+.global-context-header {
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.global-context-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.global-context-repo {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-context-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 8px;
+  font-size: 11px;
+}
+
+.global-context-controls select {
+  min-width: 140px;
+  max-width: 100%;
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
+  height: 22px;
+}
+
+.global-context-meta {
+  padding: 0 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.global-context-status {
+  font-size: 11px;
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.global-context-status.on-base {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+  border-color: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground) 40%, transparent);
+}
+
+.global-context-status.off-base {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+  border-color: color-mix(in srgb, var(--vscode-gitDecoration-modifiedResourceForeground) 40%, transparent);
+}
+
+.global-context-fetch-time {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.global-context-branches {
+  padding: 0 16px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.global-context-graph {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 8px 14px;
+}
+
+.global-context-graph-hint {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  padding: 0 8px 6px;
+}
+
+.global-context-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--row-height);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.global-context-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.global-context-row.is-selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.global-context-row-graph {
+  width: 70px;
+  min-width: 70px;
+}
+
+.global-context-row-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.global-context-row-title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.global-context-row-sha {
+  opacity: 0.8;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10px;
+}
+
+.global-context-row-subject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-context-row-meta {
+  font-size: 10px;
+  opacity: 0.72;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

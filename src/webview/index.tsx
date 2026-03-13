@@ -7,11 +7,12 @@ import { DetailsPane } from './components/DetailsPane';
 import { SquashPreview } from './components/SquashPreview';
 import { ContextMenu } from './components/ContextMenu';
 import { BranchSelector } from './components/BranchSelector';
+import { GlobalCommitContextPane, GlobalCommitSelection } from './components/GlobalCommitContextPane';
 
 
 import { RepoSelector } from './components/RepoSelector';
 import { vscode, request } from './state/vscode';
-import { RepoInfo } from '../extension/protocol/types';
+import { RepoInfo, Commit } from '../extension/protocol/types';
 import './styles/main.css';
 
 export const App = () => {
@@ -176,6 +177,8 @@ export const App = () => {
   }, [selectedRepoRoot, setSelectedBranch]);
 
   const singleContextLocked = isGlobalSearchActive;
+  const [selectedGlobalCommit, setSelectedGlobalCommit] = useState<GlobalCommitSelection | null>(null);
+  const [globalContextRefreshKey, setGlobalContextRefreshKey] = useState(0);
   const globalGraphGroups = React.useMemo(() => {
     if (!isGlobalSearchActive) return [] as Array<{ repoRoot: string; repoLabel: string; commits: any[] }>;
     return globalGroups.map(group => ({
@@ -184,6 +187,19 @@ export const App = () => {
       commits: GraphLayout.compute(group.commits)
     }));
   }, [globalGroups, isGlobalSearchActive]);
+
+  useEffect(() => {
+    if (!isGlobalSearchActive) {
+      setSelectedGlobalCommit(null);
+      return;
+    }
+    if (!selectedGlobalCommit) return;
+    const stillExists = globalGraphGroups.some(group =>
+      group.repoRoot === selectedGlobalCommit.repoRoot &&
+      group.commits.some((c: Commit) => c.sha === selectedGlobalCommit.commit.sha)
+    );
+    if (!stillExists) setSelectedGlobalCommit(null);
+  }, [globalGraphGroups, isGlobalSearchActive, selectedGlobalCommit]);
 
   useEffect(() => {
     if (singleContextLocked) {
@@ -480,6 +496,7 @@ export const App = () => {
       const res = await request<T>(type, payload);
       if (type === 'git/fetch') {
         await refreshRepos(true);
+        setGlobalContextRefreshKey(v => v + 1);
       }
       refresh();
       setActionStatus(prev => ({ ...prev, [type]: 'success' }));
@@ -838,8 +855,17 @@ export const App = () => {
                         <CommitRow
                           key={`${group.repoRoot}:${commit.sha}`}
                           commit={commit}
-                          isSelected={false}
-                          onSelect={() => {}}
+                          isSelected={
+                            selectedGlobalCommit?.repoRoot === group.repoRoot &&
+                            selectedGlobalCommit?.commit.sha === commit.sha
+                          }
+                          onSelect={() => {
+                            setSelectedGlobalCommit({
+                              repoRoot: group.repoRoot,
+                              repoLabel: group.repoLabel,
+                              commit
+                            });
+                          }}
                           onContextMenu={() => {}}
                         />
                       ))}
@@ -948,11 +974,10 @@ export const App = () => {
         />
         <div className={`right-pane ${selectedShas.length === 1 && selectedShas[0] === 'UNCOMMITTED' ? 'uncommitted' : ''}`}>
           {isGlobalSearchActive ? (
-            <div style={{ padding: '16px', opacity: 0.8, lineHeight: 1.45 }}>
-              Global search mode is active.
-              <br />
-              Switch back to a single repo/branch context to enable commit actions and details.
-            </div>
+            <GlobalCommitContextPane
+              selection={selectedGlobalCommit}
+              refreshKey={globalContextRefreshKey}
+            />
           ) : moveMode ? (
             <div style={{ padding: '16px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Move mode</div>

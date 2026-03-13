@@ -5,7 +5,7 @@ import * as os from 'os';
 import { GitRunner } from './git/GitRunner';
 import { GitLogParser } from './git/GitLogParser';
 import { getDefaultSquashTitle, parseUncommittedChangesFromPorcelain } from './git/changeParsing';
-import { RequestMessage, ResponseMessage, RepoInfo, GlobalSearchGroup, GlobalSearchResponse } from './protocol/types';
+import { RequestMessage, ResponseMessage, RepoInfo, GlobalSearchGroup, GlobalSearchResponse, GlobalCommitContextResponse } from './protocol/types';
 import { GitContentProvider } from './git/GitContentProvider';
 
 export class GitGraphViewProvider implements vscode.WebviewViewProvider {
@@ -199,6 +199,126 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private _parseRefLines(stdout: string): string[] {
+    return String(stdout || '')
+      .split('\n')
+      .map(v => v.trim())
+      .filter(Boolean)
+      .filter(v => !v.includes(' -> '));
+  }
+
+  private _pickDefaultBaseBranch(options: string[], preferred?: string): string {
+    const uniq = Array.from(new Set(options));
+    if (preferred && uniq.includes(preferred)) return preferred;
+    const preferredOrder = [
+      'origin/main',
+      'origin/master',
+      'origin/dev',
+      'main',
+      'master',
+      'dev'
+    ];
+    for (const p of preferredOrder) {
+      if (uniq.includes(p)) return p;
+    }
+    return uniq[0] || '';
+  }
+
+  private async _getLastFetchUnix(runner: GitRunner): Promise<number> {
+    try {
+      const fetchHeadPathRes = await runner.run(['rev-parse', '--git-path', 'FETCH_HEAD']);
+      if (fetchHeadPathRes.exitCode !== 0) return 0;
+      const fetchHeadPath = String(fetchHeadPathRes.stdout || '').trim();
+      if (!fetchHeadPath) return 0;
+      const st = await fs.promises.stat(fetchHeadPath);
+      return Math.floor(st.mtimeMs / 1000);
+    } catch {
+      return 0;
+    }
+  }
+
+  private async _buildGlobalCommitContext(
+    root: string,
+    sha: string,
+    preferredBaseBranch?: string
+  ): Promise<GlobalCommitContextResponse> {
+    const runner = this._gitRunnersByRoot.get(root) || new GitRunner(root);
+    if (!this._gitRunnersByRoot.has(root)) this._gitRunnersByRoot.set(root, runner);
+
+    const [localRefsRes, remoteRefsRes, originHeadRes, currentBranchRes] = await Promise.all([
+      runner.run(['for-each-ref', '--format=%(refname:short)', 'refs/heads']),
+      runner.run(['for-each-ref', '--format=%(refname:short)', 'refs/remotes']),
+      runner.run(['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD']),
+      runner.run(['symbolic-ref', '--quiet', '--short', 'HEAD'])
+    ]);
+
+    const localRefs = localRefsRes.exitCode === 0 ? this._parseRefLines(localRefsRes.stdout) : [];
+    const remoteRefs = remoteRefsRes.exitCode === 0 ? this._parseRefLines(remoteRefsRes.stdout) : [];
+    const baseBranchOptions = Array.from(new Set([...remoteRefs, ...localRefs]));
+
+    const originHead =
+      originHeadRes.exitCode === 0 ? String(originHeadRes.stdout || '').trim() : '';
+    const currentBranch =
+      currentBranchRes.exitCode === 0 ? String(currentBranchRes.stdout || '').trim() : '';
+    const defaultBaseBranch = this._pickDefaultBaseBranch(baseBranchOptions, originHead || currentBranch);
+    const resolvedBaseBranch = this._pickDefaultBaseBranch(baseBranchOptions, preferredBaseBranch || defaultBaseBranch);
+
+    const [containsLocalRes, containsRemoteRes, containsBaseRes, lastFetchUnix] = await Promise.all([
+      runner.run(['branch', '--contains', sha, '--format=%(refname:short)']),
+      runner.run(['branch', '-r', '--contains', sha, '--format=%(refname:short)']),
+      resolvedBaseBranch
+        ? runner.run(['merge-base', '--is-ancestor', sha, resolvedBaseBranch])
+        : Promise.resolve({ stdout: '', stderr: '', exitCode: 1 }),
+      this._getLastFetchUnix(runner)
+    ]);
+
+    const containingLocalBranches =
+      containsLocalRes.exitCode === 0 ? this._parseRefLines(containsLocalRes.stdout) : [];
+    const containingRemoteBranches =
+      containsRemoteRes.exitCode === 0 ? this._parseRefLines(containsRemoteRes.stdout) : [];
+
+    const logFormat = '%H%x09%P%x09%an%x09%ae%x09%ad%x09%s%x09%D';
+    const logRefs = Array.from(
+      new Set(
+        [
+          resolvedBaseBranch,
+          ...containingRemoteBranches.slice(0, 4),
+          ...containingLocalBranches.slice(0, 4),
+          sha
+        ].filter(Boolean)
+      )
+    );
+    const logArgs = [
+      'log',
+      '--topo-order',
+      '-n', '120',
+      '--date=iso-strict',
+      `--pretty=format:${logFormat}`,
+      ...logRefs
+    ];
+    const graphRes = await runner.run(logArgs);
+    const commits =
+      graphRes.exitCode === 0
+        ? GitLogParser.parseLog(graphRes.stdout).map(c => ({
+            ...c,
+            refs: GitLogParser.parseDecorations(c.decorations)
+          }))
+        : [];
+
+    return {
+      repoRoot: root,
+      sha,
+      baseBranchOptions,
+      defaultBaseBranch,
+      resolvedBaseBranch,
+      containsBaseBranch: containsBaseRes.exitCode === 0,
+      containingLocalBranches,
+      containingRemoteBranches,
+      lastFetchUnix,
+      commits
+    };
+  }
+
   private async _searchCommitsInRepo(
     root: string,
     label: string,
@@ -368,6 +488,18 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               scannedRepos: repos.length
             };
             this._sendResponse(message.requestId, response);
+            break;
+          }
+          case 'search/globalCommitContext': {
+            const repoRoot = String(message.payload?.repoRoot || '').trim();
+            const sha = String(message.payload?.sha || '').trim();
+            const baseBranch = String(message.payload?.baseBranch || '').trim();
+            if (!repoRoot || !sha) {
+              this._sendError(message.requestId, 'Missing repoRoot or sha');
+              break;
+            }
+            const context = await this._buildGlobalCommitContext(repoRoot, sha, baseBranch || undefined);
+            this._sendResponse(message.requestId, context);
             break;
           }
           case 'commits/list':
