@@ -22,8 +22,6 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha, repoRoot, readOnl
   const [isOptionPressed, setIsOptionPressed] = useState(false);
   const [collapsedFoldersByKey, setCollapsedFoldersByKey] = useState<Map<string, Set<string>>>(() => new Map());
 
-  if (!sha) return <div style={{ padding: '16px', opacity: 0.6 }}>Select a commit to see details</div>;
-
   // Track Option/Alt for "commit without checks" affordance.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -329,7 +327,9 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha, repoRoot, readOnl
 
   return (
     <div className={`details-pane ${hasCommitBox ? 'has-commit-box' : ''} ${isUncommitted ? 'uncommitted' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {loading && !details ? (
+      {!sha ? (
+        <div style={{ padding: '16px', opacity: 0.6 }}>Select a commit to see details</div>
+      ) : loading && !details ? (
         <div style={{ padding: '16px' }}>Loading...</div>
       ) : !details ? (
         <div style={{ padding: '16px' }}>Failed to load details</div>
