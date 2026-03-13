@@ -49,8 +49,9 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
     const message = commitMessage.trim();
     if (!amend && !message) return;
 
-    if (selectedPaths.size === 0) return;
-    const paths = Array.from(selectedPaths);
+    // Single-click behavior: if nothing is selected, commit all visible uncommitted changes.
+    const paths = selectedPaths.size > 0 ? Array.from(selectedPaths) : [...allFilePaths];
+    if (paths.length === 0) return;
 
     setCommitSubmitting(true);
     setCommitError(null);
@@ -294,30 +295,17 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
 
   const commitSelectionLabel = useMemo(() => {
     if (selectedPaths.size > 0) return `Committing ${selectedPaths.size} selected file(s)`;
+    if (allFilePaths.length > 0) return `Committing all ${allFilePaths.length} changed file(s)`;
     return 'No files selected';
-  }, [selectedPaths.size]);
+  }, [selectedPaths.size, allFilePaths.length]);
 
   const handleCommitClick = (e?: React.MouseEvent) => {
     const noVerify = !!e?.altKey;
-    // UX: if the user typed a message but forgot to select files, first click selects all,
-    // second click commits.
-    if (selectedPaths.size === 0) {
-      if (!commitMessage.trim()) return;
-      if (allFilePaths.length === 0) return;
-      selectAll();
-      return;
-    }
     performCommit({ noVerify });
   };
 
   const handleAmendClick = (e?: React.MouseEvent) => {
     const noVerify = !!e?.altKey;
-    // Same UX for amend (message optional): first click selects all if nothing is selected.
-    if (selectedPaths.size === 0) {
-      if (allFilePaths.length === 0) return;
-      selectAll();
-      return;
-    }
     performCommit({ amend: true, noVerify });
   };
 

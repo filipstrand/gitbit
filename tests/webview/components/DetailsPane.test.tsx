@@ -25,7 +25,7 @@ describe('DetailsPane', () => {
     mockUseCommitDetails.mockReset();
   });
 
-  it('requires explicit second click to commit when nothing is selected', async () => {
+  it('commits all changed files on first click when nothing is selected', async () => {
     mockRequest.mockResolvedValue(undefined);
     mockUseCommitDetails.mockReturnValue({
       details: {
@@ -50,9 +50,6 @@ describe('DetailsPane', () => {
     });
 
     const commitButton = screen.getByRole('button', { name: 'Commit' });
-    fireEvent.click(commitButton);
-    expect(mockRequest).not.toHaveBeenCalled();
-
     fireEvent.click(commitButton);
     expect(mockRequest).toHaveBeenCalledWith('git/commit', {
       message: 'test commit message',
@@ -124,7 +121,6 @@ describe('DetailsPane', () => {
 
     render(<DetailsPane sha="UNCOMMITTED" />);
     const amendButton = screen.getByRole('button', { name: 'Amend' });
-    fireEvent.click(amendButton);
     fireEvent.click(amendButton, { altKey: true });
 
     expect(mockRequest).toHaveBeenCalledWith('git/commit', {
@@ -159,7 +155,6 @@ describe('DetailsPane', () => {
     });
 
     const commitButton = screen.getByRole('button', { name: 'Commit' });
-    fireEvent.click(commitButton);
     fireEvent.click(commitButton);
 
     await waitFor(() => {

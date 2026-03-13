@@ -1835,7 +1835,11 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
 
                 const commitRes = await this._gitRunner.run(commitArgs({ noEdit: true }));
                 if (commitRes.exitCode !== 0) {
-                  this._sendError(message.requestId, 'Commit failed', commitRes.stderr);
+                  const errorDetails = [commitRes.stderr, commitRes.stdout]
+                    .map(s => String(s || '').trim())
+                    .filter(Boolean)
+                    .join('\n\n');
+                  this._sendError(message.requestId, 'Commit failed', errorDetails || undefined);
                   break;
                 }
 
