@@ -901,6 +901,15 @@ body {
   opacity: 1;
 }
 
+.commit-row .global-context-jump-icon {
+  opacity: 0.85;
+  color: var(--vscode-textLink-foreground);
+}
+
+.commit-row .global-context-jump-icon:hover {
+  opacity: 1;
+}
+
 .subject-message {
   white-space: nowrap;
 }

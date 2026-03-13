@@ -23,6 +23,11 @@ interface CommitRowProps {
   onDropBefore?: (beforeSha: string | null, draggedShas: string[]) => void;
   onHoverDropTarget?: (sha: string | null) => void;
   onDragFinished?: () => void;
+  onSelectedAction?: {
+    iconClassName: string;
+    title: string;
+    onClick: () => void;
+  };
 }
 
 export const CommitRow: React.FC<CommitRowProps> = ({
@@ -43,7 +48,8 @@ export const CommitRow: React.FC<CommitRowProps> = ({
   onBeginDrag,
   onDropBefore,
   onHoverDropTarget,
-  onDragFinished
+  onDragFinished,
+  onSelectedAction
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     onSelect(commit.sha, e.metaKey || e.ctrlKey, e.shiftKey);
@@ -100,6 +106,11 @@ export const CommitRow: React.FC<CommitRowProps> = ({
   const handleDiscardAll = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDiscardAllUncommitted?.();
+  };
+
+  const handleSelectedActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelectedAction?.onClick();
   };
 
   return (
@@ -246,13 +257,22 @@ export const CommitRow: React.FC<CommitRowProps> = ({
             </span>
           ))}
           <span className="subject-message">{commit.subject}</span>
-          {isUncommitted && (
+          {(isUncommitted || (isSelected && onSelectedAction)) && (
             <span className="commit-row-actions">
-              <span
-                className="codicon codicon-discard"
-                title="Discard all uncommitted changes"
-                onClick={handleDiscardAll}
-              />
+              {isUncommitted && (
+                <span
+                  className="codicon codicon-discard"
+                  title="Discard all uncommitted changes"
+                  onClick={handleDiscardAll}
+                />
+              )}
+              {isSelected && onSelectedAction && (
+                <span
+                  className={`codicon ${onSelectedAction.iconClassName}`}
+                  title={onSelectedAction.title}
+                  onClick={handleSelectedActionClick}
+                />
+              )}
             </span>
           )}
           </div>

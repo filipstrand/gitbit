@@ -6,10 +6,12 @@ import { request, vscode } from '../state/vscode';
 
 interface DetailsPaneProps {
   sha: string | null;
+  repoRoot?: string | null;
+  readOnly?: boolean;
 }
 
-export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
-  const { details, changes, loading } = useCommitDetails(sha);
+export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha, repoRoot, readOnly = false }) => {
+  const { details, changes, loading } = useCommitDetails(sha, repoRoot);
   const [commitMessage, setCommitMessage] = useState('');
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [revertSelectedPaths, setRevertSelectedPaths] = useState<Set<string>>(new Set());
@@ -85,6 +87,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
       type: 'file/diff',
       requestId: `diff-${Date.now()}`,
       payload: {
+        repoRoot: repoRoot || undefined,
         base,
         target: details.sha,
         path: change.path,
@@ -99,6 +102,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
       type: 'file/revealInOS',
       requestId: `reveal-${Date.now()}`,
       payload: {
+        repoRoot: repoRoot || undefined,
         path: change.path,
         oldPath: change.oldPath,
         status: change.status
@@ -118,6 +122,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
       type: 'file/open',
       requestId: `open-${Date.now()}`,
       payload: {
+        repoRoot: repoRoot || undefined,
         sha: details.sha,
         base,
         target: details.sha,
@@ -145,6 +150,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
       type: 'git/revertFiles',
       requestId: `revert-files-${Date.now()}`,
       payload: {
+        repoRoot: repoRoot || undefined,
         sha: details.sha,
         base,
         files: changesToRevert.map(c => ({
@@ -485,7 +491,7 @@ export const DetailsPane: React.FC<DetailsPaneProps> = ({ sha }) => {
               onFileClick={handleFileClick} 
               onSecondaryAction={handleFileDiff}
               onRevealInOS={handleRevealInOS}
-              onRevertCommitted={isUncommitted ? undefined : handleRevertCommitted}
+              onRevertCommitted={isUncommitted || readOnly ? undefined : handleRevertCommitted}
               onDiscard={isUncommitted ? handleDiscard : undefined} 
               selectable={isUncommitted}
               multiSelect={!isUncommitted}

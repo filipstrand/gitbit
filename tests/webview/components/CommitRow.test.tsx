@@ -94,4 +94,24 @@ describe('CommitRow', () => {
     fireEvent.click(screen.getByTitle('Discard all uncommitted changes'));
     expect(onDiscardAllUncommitted).toHaveBeenCalled();
   });
+
+  it('renders selected action icon and triggers callback', () => {
+    const onSelectedAction = vi.fn();
+    render(
+      <CommitRow
+        commit={commit()}
+        isSelected
+        onSelect={() => {}}
+        onContextMenu={() => {}}
+        onSelectedAction={{
+          iconClassName: 'codicon-arrow-left',
+          title: 'Open this commit in repo context',
+          onClick: onSelectedAction
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByTitle('Open this commit in repo context'));
+    expect(onSelectedAction).toHaveBeenCalled();
+  });
 });

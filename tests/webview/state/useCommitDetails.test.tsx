@@ -51,6 +51,15 @@ describe('useCommitDetails', () => {
     expect(mockRequest).toHaveBeenCalledWith('commit/changes', { sha: 'abc123' });
   });
 
+  it('includes repoRoot in requests when provided', async () => {
+    renderHook(() => useCommitDetails('abc123', '/tmp/gitbit'));
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith('commit/details', { sha: 'abc123', repoRoot: '/tmp/gitbit' });
+    });
+    expect(mockRequest).toHaveBeenCalledWith('commit/changes', { sha: 'abc123', repoRoot: '/tmp/gitbit' });
+  });
+
   it('refreshes silently on repoChanged event after debounce', async () => {
     renderHook(() => useCommitDetails('abc123'));
     await waitFor(() => expect(mockRequest).toHaveBeenCalled());

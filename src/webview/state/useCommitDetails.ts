@@ -12,7 +12,7 @@ export interface CommitDetails {
   parents: string[];
 }
 
-export function useCommitDetails(sha: string | null) {
+export function useCommitDetails(sha: string | null, repoRoot?: string | null) {
   const [details, setDetails] = useState<CommitDetails | null>(null);
   const [changes, setChanges] = useState<Change[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,9 +26,10 @@ export function useCommitDetails(sha: string | null) {
 
     if (!silent) setLoading(true);
     try {
+      const payload = repoRoot ? { sha, repoRoot } : { sha };
       const [d, c] = await Promise.all([
-        request<CommitDetails>('commit/details', { sha }),
-        request<Change[]>('commit/changes', { sha })
+        request<CommitDetails>('commit/details', payload),
+        request<Change[]>('commit/changes', payload)
       ]);
       setDetails(d);
       setChanges(c);
@@ -37,7 +38,7 @@ export function useCommitDetails(sha: string | null) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [sha]);
+  }, [sha, repoRoot]);
 
   useEffect(() => {
     fetch();

@@ -51,8 +51,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     return this._gitRunner?.cwd || this._selectedRepoRoot || undefined;
   }
 
-  private _createContentUri(rev: string, p: string) {
-    const root = this._currentRepoRoot();
+  private _createContentUri(rev: string, p: string, repoRoot?: string) {
+    const root = repoRoot || this._currentRepoRoot();
     const query = `rev=${encodeURIComponent(rev)}${root ? `&repo=${encodeURIComponent(root)}` : ''}&t=${Date.now()}`;
     return vscode.Uri.from({
       scheme: GitContentProvider.scheme,
@@ -603,7 +603,20 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
             break;
           case 'commit/details':
-            if (!this._gitRunner) return;
+            {
+              const requestedRepoRoot = typeof message.payload?.repoRoot === 'string'
+                ? String(message.payload.repoRoot).trim()
+                : '';
+              const runner = requestedRepoRoot
+                ? (this._gitRunnersByRoot.get(requestedRepoRoot) || new GitRunner(requestedRepoRoot))
+                : this._gitRunner;
+              if (requestedRepoRoot && !this._gitRunnersByRoot.has(requestedRepoRoot)) {
+                this._gitRunnersByRoot.set(requestedRepoRoot, runner!);
+              }
+              if (!runner) {
+                this._sendError(message.requestId, 'No repository found');
+                break;
+              }
             if (message.payload.sha === GitGraphViewProvider.UNCOMMITTED_SHA) {
               this._sendResponse(message.requestId, {
                 sha: GitGraphViewProvider.UNCOMMITTED_SHA,
@@ -616,7 +629,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               });
               return;
             }
-            const detailsResult = await this._gitRunner.run([
+            const detailsResult = await runner.run([
               'show',
               '-s',
               '--date=iso-strict',
@@ -638,10 +651,23 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               this._sendError(message.requestId, 'Failed to fetch details');
             }
             break;
-          case 'commit/changes':
-            if (!this._gitRunner) return;
+          }
+          case 'commit/changes': {
+            const requestedRepoRoot = typeof message.payload?.repoRoot === 'string'
+              ? String(message.payload.repoRoot).trim()
+              : '';
+            const runner = requestedRepoRoot
+              ? (this._gitRunnersByRoot.get(requestedRepoRoot) || new GitRunner(requestedRepoRoot))
+              : this._gitRunner;
+            if (requestedRepoRoot && !this._gitRunnersByRoot.has(requestedRepoRoot)) {
+              this._gitRunnersByRoot.set(requestedRepoRoot, runner!);
+            }
+            if (!runner) {
+              this._sendError(message.requestId, 'No repository found');
+              break;
+            }
             if (message.payload.sha === GitGraphViewProvider.UNCOMMITTED_SHA) {
-              const statusRes = await this._gitRunner.run([
+              const statusRes = await runner.run([
                 'status',
                 '--porcelain',
                 '--find-renames',
@@ -658,7 +684,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             // Use diff-tree (instead of `git show`) so merge commits reliably return changed files.
             // For merge commits, show changes against the first parent (what you typically want when inspecting a merge).
             const sha = String(message.payload.sha || '');
-            const parentsRes = await this._gitRunner.run(['rev-list', '--parents', '-n', '1', sha]);
+            const parentsRes = await runner.run(['rev-list', '--parents', '-n', '1', sha]);
             const toks = parentsRes.exitCode === 0 ? parentsRes.stdout.trim().split(' ').filter(Boolean) : [];
             const parents = toks.length >= 2 ? toks.slice(1) : [];
 
@@ -674,13 +700,13 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             let changesResult;
             if (parents.length === 0) {
               // Root commit.
-              changesResult = await this._gitRunner.run([...baseArgs, '--root', sha]);
+              changesResult = await runner.run([...baseArgs, '--root', sha]);
             } else if (parents.length === 1) {
               // Normal commit.
-              changesResult = await this._gitRunner.run([...baseArgs, sha]);
+              changesResult = await runner.run([...baseArgs, sha]);
             } else {
               // Merge commit: compare first parent -> merge result.
-              changesResult = await this._gitRunner.run([...baseArgs, parents[0], sha]);
+              changesResult = await runner.run([...baseArgs, parents[0], sha]);
             }
             if (changesResult.exitCode === 0) {
               const changes = this._parseChanges(changesResult.stdout);
@@ -689,6 +715,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               this._sendError(message.requestId, 'Failed to fetch changes');
             }
             break;
+          }
           case 'range/changes':
             if (!this._gitRunner) return;
             const targetRef = message.payload.target === GitGraphViewProvider.UNCOMMITTED_SHA ? '' : message.payload.target;
@@ -709,9 +736,23 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
             break;
           case 'file/diff':
+            {
+            const requestedRepoRoot = typeof message.payload?.repoRoot === 'string'
+              ? String(message.payload.repoRoot).trim()
+              : '';
+            const runner = requestedRepoRoot
+              ? (this._gitRunnersByRoot.get(requestedRepoRoot) || new GitRunner(requestedRepoRoot))
+              : this._gitRunner;
+            if (requestedRepoRoot && !this._gitRunnersByRoot.has(requestedRepoRoot)) {
+              this._gitRunnersByRoot.set(requestedRepoRoot, runner!);
+            }
+            if (!runner) {
+              this._sendError(message.requestId, 'No repository found');
+              break;
+            }
             const { base, target, path: filePath, oldPath, status } = message.payload;
             
-            const createUri = (rev: string, p: string) => this._createContentUri(rev, p);
+            const createUri = (rev: string, p: string) => this._createContentUri(rev, p, runner.cwd);
 
             let leftUri: vscode.Uri;
             let rightUri: vscode.Uri;
@@ -723,7 +764,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                 ? createUri('EMPTY', filePath)
                 : createUri('HEAD', oldPath || filePath);
               
-              const fullPath = path.join(this._gitRunner!.cwd, filePath);
+              const fullPath = path.join(runner.cwd, filePath);
               rightUri = vscode.Uri.file(fullPath);
             } else {
               leftUri = status === 'A' 
@@ -745,7 +786,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
             diffArgs.push('--', filePath);
 
-            const diffResForSelection = await this._gitRunner!.run(diffArgs);
+            const diffResForSelection = await runner.run(diffArgs);
             if (diffResForSelection.exitCode === 0) {
               const match = diffResForSelection.stdout.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/m);
               if (match) {
@@ -779,14 +820,24 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               // Fallback: stay in the current column if moving fails
             }
             break;
+            }
           case 'file/revealInOS': {
-            if (!this._gitRunner) return;
+            const requestedRepoRoot = typeof message.payload?.repoRoot === 'string'
+              ? String(message.payload.repoRoot).trim()
+              : '';
+            const runner = requestedRepoRoot
+              ? (this._gitRunnersByRoot.get(requestedRepoRoot) || new GitRunner(requestedRepoRoot))
+              : this._gitRunner;
+            if (requestedRepoRoot && !this._gitRunnersByRoot.has(requestedRepoRoot)) {
+              this._gitRunnersByRoot.set(requestedRepoRoot, runner!);
+            }
+            if (!runner) return;
             const relPathRaw: unknown = message.payload?.path;
             const oldPathRaw: unknown = message.payload?.oldPath;
             const relPath = typeof relPathRaw === 'string' ? relPathRaw : '';
             const oldRelPath = typeof oldPathRaw === 'string' ? oldPathRaw : '';
 
-            const repoRoot = this._gitRunner!.cwd;
+            const repoRoot = runner.cwd;
 
             const exists = async (fsPath: string) => {
               try {
@@ -1591,7 +1642,16 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             break;
           }
           case 'file/open': {
-            if (!this._gitRunner) return;
+            const requestedRepoRoot = typeof message.payload?.repoRoot === 'string'
+              ? String(message.payload.repoRoot).trim()
+              : '';
+            const runner = requestedRepoRoot
+              ? (this._gitRunnersByRoot.get(requestedRepoRoot) || new GitRunner(requestedRepoRoot))
+              : this._gitRunner;
+            if (requestedRepoRoot && !this._gitRunnersByRoot.has(requestedRepoRoot)) {
+              this._gitRunnersByRoot.set(requestedRepoRoot, runner!);
+            }
+            if (!runner) return;
             const openPath = String(message.payload?.path || '');
             const sha = String(message.payload?.sha || GitGraphViewProvider.UNCOMMITTED_SHA);
             const base = String(message.payload?.base || 'HEAD');
@@ -1599,7 +1659,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             const oldPath = typeof message.payload?.oldPath === 'string' ? message.payload.oldPath : undefined;
             const status = String(message.payload?.status || '');
 
-            const createUri = (rev: string, p: string) => this._createContentUri(rev, p);
+            const createUri = (rev: string, p: string) => this._createContentUri(rev, p, runner.cwd);
 
             try {
               const openTextOrBinary = async (uri: vscode.Uri, opts?: { selection?: vscode.Range }) => {
@@ -1623,11 +1683,11 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
                   break;
                 }
 
-            const fullPath = path.join(this._gitRunner.cwd, openPath);
+            const fullPath = path.join(runner.cwd, openPath);
             
                 // Find first diff line (against HEAD) to jump to.
             let selection: vscode.Range | undefined;
-            const diffRes = await this._gitRunner.run(['diff', '--unified=0', 'HEAD', '--', openPath]);
+            const diffRes = await runner.run(['diff', '--unified=0', 'HEAD', '--', openPath]);
             if (diffRes.exitCode === 0) {
               const match = diffRes.stdout.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/m);
               if (match) {
@@ -1645,7 +1705,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               // (Opening a revision URI is read-only, which is not what we want for normal navigation/editing.)
               const effectiveStatus = status.toUpperCase();
               const tryOpenWorktreeFile = async (p: string) => {
-                const fullPath = path.join(this._gitRunner!.cwd, p);
+                const fullPath = path.join(runner.cwd, p);
                 try {
                   await vscode.workspace.fs.stat(vscode.Uri.file(fullPath));
                 } catch {

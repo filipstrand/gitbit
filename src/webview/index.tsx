@@ -7,13 +7,18 @@ import { DetailsPane } from './components/DetailsPane';
 import { SquashPreview } from './components/SquashPreview';
 import { ContextMenu } from './components/ContextMenu';
 import { BranchSelector } from './components/BranchSelector';
-import { GlobalCommitContextPane, GlobalCommitSelection } from './components/GlobalCommitContextPane';
 
 
 import { RepoSelector } from './components/RepoSelector';
 import { vscode, request } from './state/vscode';
-import { RepoInfo, Commit } from '../extension/protocol/types';
+import { RepoInfo, Commit, GlobalCommitContextResponse } from '../extension/protocol/types';
 import './styles/main.css';
+
+interface GlobalCommitSelection {
+  repoRoot: string;
+  repoLabel: string;
+  commit: Commit;
+}
 
 export const App = () => {
   const { 
@@ -117,6 +122,7 @@ export const App = () => {
 
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [selectedRepoRoot, setSelectedRepoRoot] = useState<string>(() => initialWebviewState.selectedRepoRoot || '');
+  const repoSwitchFilterOverrideRef = useRef<{ repoRoot: string; branch: string } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const refreshRef = useRef(refresh);
 
@@ -167,8 +173,15 @@ export const App = () => {
     (async () => {
       try {
         await request('repo/select', { root: selectedRepoRoot });
-        // Reset Filter to HEAD when switching repos (keeps UI consistent, avoids dangling filters).
-        setSelectedBranch('HEAD');
+        // Most repo switches should reset Filter to HEAD. For targeted global-commit jumps,
+        // we preserve an explicit filter branch set by the jump action.
+        const override = repoSwitchFilterOverrideRef.current;
+        if (override && override.repoRoot === selectedRepoRoot) {
+          setSelectedBranch(override.branch || 'HEAD');
+          repoSwitchFilterOverrideRef.current = null;
+        } else {
+          setSelectedBranch('HEAD');
+        }
         refreshRef.current(true);
       } catch {
         // ignore; keep whatever repo the extension resolved
@@ -178,7 +191,7 @@ export const App = () => {
 
   const singleContextLocked = isGlobalSearchActive;
   const [selectedGlobalCommit, setSelectedGlobalCommit] = useState<GlobalCommitSelection | null>(null);
-  const [globalContextRefreshKey, setGlobalContextRefreshKey] = useState(0);
+  const [pendingGlobalFocus, setPendingGlobalFocus] = useState<{ repoRoot: string; sha: string } | null>(null);
   const globalGraphGroups = React.useMemo(() => {
     if (!isGlobalSearchActive) return [] as Array<{ repoRoot: string; repoLabel: string; commits: any[] }>;
     return globalGroups.map(group => ({
@@ -200,6 +213,21 @@ export const App = () => {
     );
     if (!stillExists) setSelectedGlobalCommit(null);
   }, [globalGraphGroups, isGlobalSearchActive, selectedGlobalCommit]);
+
+  useEffect(() => {
+    if (!pendingGlobalFocus || isGlobalSearchActive) return;
+    if (selectedRepoRoot !== pendingGlobalFocus.repoRoot) return;
+    const exists = commits.some((c: Commit) => c.sha === pendingGlobalFocus.sha);
+    if (!exists) return;
+    setSelectedShas([pendingGlobalFocus.sha]);
+    setAnchorSha(pendingGlobalFocus.sha);
+    setActiveSha(pendingGlobalFocus.sha);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-sha="${pendingGlobalFocus.sha}"]`);
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }, 0);
+    setPendingGlobalFocus(null);
+  }, [commits, isGlobalSearchActive, pendingGlobalFocus, selectedRepoRoot]);
 
   useEffect(() => {
     if (singleContextLocked) {
@@ -496,7 +524,6 @@ export const App = () => {
       const res = await request<T>(type, payload);
       if (type === 'git/fetch') {
         await refreshRepos(true);
-        setGlobalContextRefreshKey(v => v + 1);
       }
       refresh();
       setActionStatus(prev => ({ ...prev, [type]: 'success' }));
@@ -663,6 +690,45 @@ export const App = () => {
       loadMore();
     }
   }, [singleContextLocked, hasMore, loadMore, loading, loadingMore]);
+
+  const handleJumpToGlobalCommitContext = useCallback(async () => {
+    if (!selectedGlobalCommit) return;
+    const selection = selectedGlobalCommit;
+    let filterBranch = 'HEAD';
+
+    try {
+      const state = vscode.getState?.() || {};
+      const preferredByRepo = (state.globalBaseBranchByRepo || {}) as Record<string, string>;
+      const preferredBaseBranch = String(preferredByRepo[selection.repoRoot] || '').trim();
+      const context = await request<GlobalCommitContextResponse>('search/globalCommitContext', {
+        repoRoot: selection.repoRoot,
+        sha: selection.commit.sha,
+        baseBranch: preferredBaseBranch || undefined
+      });
+
+      const localBranches = context.containingLocalBranches || [];
+      if (context.resolvedBaseBranch && localBranches.includes(context.resolvedBaseBranch)) {
+        filterBranch = context.resolvedBaseBranch;
+      } else if (localBranches.length > 0) {
+        filterBranch = localBranches[0];
+      } else if (context.resolvedBaseBranch) {
+        filterBranch = context.resolvedBaseBranch;
+      } else if ((context.containingRemoteBranches || []).length > 0) {
+        filterBranch = context.containingRemoteBranches[0];
+      }
+    } catch {
+      // If placement lookup fails, still navigate to the repo and focus by SHA best-effort.
+    }
+
+    repoSwitchFilterOverrideRef.current = {
+      repoRoot: selection.repoRoot,
+      branch: filterBranch
+    };
+    setPendingGlobalFocus({ repoRoot: selection.repoRoot, sha: selection.commit.sha });
+    setSearchScope('context');
+    setSelectedRepoRoot(selection.repoRoot);
+    setSelectedBranch(filterBranch);
+  }, [selectedGlobalCommit, setSearchScope, setSelectedBranch]);
 
   // Replay-like post-drop animation: FLIP animate the rewritten rows into their new positions.
   useLayoutEffect(() => {
@@ -867,6 +933,16 @@ export const App = () => {
                             });
                           }}
                           onContextMenu={() => {}}
+                          onSelectedAction={
+                            selectedGlobalCommit?.repoRoot === group.repoRoot &&
+                            selectedGlobalCommit?.commit.sha === commit.sha
+                              ? {
+                                  iconClassName: 'codicon-arrow-left global-context-jump-icon',
+                                  title: 'Open this commit in repo context',
+                                  onClick: handleJumpToGlobalCommitContext
+                                }
+                              : undefined
+                          }
                         />
                       ))}
                     </React.Fragment>
@@ -974,10 +1050,7 @@ export const App = () => {
         />
         <div className={`right-pane ${selectedShas.length === 1 && selectedShas[0] === 'UNCOMMITTED' ? 'uncommitted' : ''}`}>
           {isGlobalSearchActive ? (
-            <GlobalCommitContextPane
-              selection={selectedGlobalCommit}
-              refreshKey={globalContextRefreshKey}
-            />
+            <DetailsPane sha={selectedGlobalCommit?.commit.sha || null} repoRoot={selectedGlobalCommit?.repoRoot || null} readOnly />
           ) : moveMode ? (
             <div style={{ padding: '16px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Move mode</div>
