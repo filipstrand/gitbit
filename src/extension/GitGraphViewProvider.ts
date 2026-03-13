@@ -1803,6 +1803,97 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             }
             break;
           }
+          case 'git/remotesList': {
+            if (!this._gitRunner) {
+              this._sendError(message.requestId, 'No repository found');
+              break;
+            }
+            const remotesRes = await this._gitRunner.run(['remote', '-v']);
+            if (remotesRes.exitCode !== 0) {
+              this._sendError(message.requestId, 'Failed to list remotes', remotesRes.stderr);
+              break;
+            }
+
+            const byName = new Map<string, { name: string; fetchUrl: string; pushUrl: string }>();
+            const lines = String(remotesRes.stdout || '')
+              .split('\n')
+              .map(l => l.trim())
+              .filter(Boolean);
+            for (const line of lines) {
+              const m = line.match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/);
+              if (!m) continue;
+              const [, name, url, kind] = m;
+              const current = byName.get(name) || { name, fetchUrl: '', pushUrl: '' };
+              if (kind === 'fetch') current.fetchUrl = url;
+              if (kind === 'push') current.pushUrl = url;
+              byName.set(name, current);
+            }
+
+            const list = Array.from(byName.values())
+              .map(r => ({
+                ...r,
+                fetchUrl: r.fetchUrl || r.pushUrl,
+                pushUrl: r.pushUrl || r.fetchUrl
+              }))
+              .sort((a, b) => {
+                if (a.name === 'origin' && b.name !== 'origin') return -1;
+                if (b.name === 'origin' && a.name !== 'origin') return 1;
+                return a.name.localeCompare(b.name);
+              });
+
+            this._sendResponse(message.requestId, list);
+            break;
+          }
+          case 'git/remoteAdd': {
+            if (!this._gitRunner) {
+              this._sendError(message.requestId, 'No repository found');
+              break;
+            }
+            const name = await vscode.window.showInputBox({
+              prompt: 'Remote name',
+              placeHolder: 'e.g. origin, upstream, teammate',
+              validateInput: (value) => {
+                const v = String(value || '').trim();
+                if (!v) return 'Remote name is required';
+                if (!/^[A-Za-z0-9._-]+$/.test(v)) return 'Use letters, numbers, dot, underscore, or dash';
+                return null;
+              }
+            });
+            if (!name) {
+              this._sendError(message.requestId, 'Add remote cancelled');
+              break;
+            }
+
+            const url = await vscode.window.showInputBox({
+              prompt: `Fetch URL for remote "${name}"`,
+              placeHolder: 'git@github.com:owner/repo.git or https://github.com/owner/repo.git',
+              validateInput: (value) => {
+                const v = String(value || '').trim();
+                if (!v) return 'Remote URL is required';
+                return null;
+              }
+            });
+            if (!url) {
+              this._sendError(message.requestId, 'Add remote cancelled');
+              break;
+            }
+
+            const existsRes = await this._gitRunner.run(['remote', 'get-url', name]);
+            if (existsRes.exitCode === 0) {
+              this._sendError(message.requestId, `Remote "${name}" already exists.`);
+              break;
+            }
+
+            const addRes = await this._gitRunner.run(['remote', 'add', name, url.trim()]);
+            if (addRes.exitCode !== 0) {
+              this._sendError(message.requestId, 'Failed to add remote', addRes.stderr);
+              break;
+            }
+
+            this._notifyRepoChanged('remote added');
+            this._sendResponse(message.requestId, 'ok');
+            break;
+          }
           case 'app/copyToClipboard': {
             await vscode.env.clipboard.writeText(message.payload.text);
             vscode.window.showInformationMessage('Copied to clipboard');

@@ -50,6 +50,12 @@ export interface RepoInfo {
   hasUpstreamUpdates?: boolean;
 }
 
+export interface RemoteInfo {
+  name: string;
+  fetchUrl: string;
+  pushUrl: string;
+}
+
 export interface GlobalSearchGroup {
   repoRoot: string;
   repoLabel: string;

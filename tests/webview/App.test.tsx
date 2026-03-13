@@ -232,5 +232,16 @@ describe('App', () => {
       expect(mockRequest).toHaveBeenCalledWith('git/reword', { sha: 'abc12345' });
     });
   });
+
+  it('opens remotes dropdown and dispatches add remote action', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remotes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add remote...' }));
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith('git/remoteAdd', {});
+    });
+  });
 });
 

@@ -8,11 +8,12 @@ import { SquashPreview } from './components/SquashPreview';
 import { ContextMenu } from './components/ContextMenu';
 import { BranchSelector } from './components/BranchSelector';
 import { GlobalContextPicker } from './components/GlobalContextPicker';
+import { RemoteSelector } from './components/RemoteSelector';
 
 
 import { RepoSelector } from './components/RepoSelector';
 import { vscode, request } from './state/vscode';
-import { RepoInfo, Commit, GlobalCommitContextResponse } from '../extension/protocol/types';
+import { RepoInfo, Commit, GlobalCommitContextResponse, RemoteInfo } from '../extension/protocol/types';
 import './styles/main.css';
 
 interface GlobalCommitSelection {
@@ -122,6 +123,7 @@ export const App = () => {
   }, [moveMode, draggedShas.length]);
 
   const [repos, setRepos] = useState<RepoInfo[]>([]);
+  const [remotes, setRemotes] = useState<RemoteInfo[]>([]);
   const [selectedRepoRoot, setSelectedRepoRoot] = useState<string>(() => initialWebviewState.selectedRepoRoot || '');
   const repoSwitchFilterOverrideRef = useRef<{ repoRoot: string; branch: string } | null>(null);
   const [contextPicker, setContextPicker] = useState<{
@@ -156,6 +158,15 @@ export const App = () => {
       // ignore (extension will still resolve via commits/list / branches/list)
     }
   }, [refresh, selectedRepoRoot]);
+
+  const refreshRemotes = useCallback(async () => {
+    try {
+      const list = await request<RemoteInfo[]>('git/remotesList');
+      setRemotes(Array.isArray(list) ? list : []);
+    } catch {
+      setRemotes([]);
+    }
+  }, []);
 
   useEffect(() => {
     refreshRepos();
@@ -195,6 +206,11 @@ export const App = () => {
       }
     })();
   }, [selectedRepoRoot, setSelectedBranch]);
+
+  useEffect(() => {
+    if (!selectedRepoRoot) return;
+    refreshRemotes();
+  }, [selectedRepoRoot, refreshRemotes]);
 
   const singleContextLocked = isGlobalSearchActive;
   const [selectedGlobalCommit, setSelectedGlobalCommit] = useState<GlobalCommitSelection | null>(null);
@@ -889,6 +905,16 @@ export const App = () => {
             branches={branches}
             selectedBranch={selectedBranch}
             onSelect={setSelectedBranch}
+            disabled={singleContextLocked}
+          />
+          <RemoteSelector
+            className="remote-switcher"
+            remotes={remotes}
+            onOpen={refreshRemotes}
+            onAddRemote={async () => {
+              await gitAction('git/remoteAdd', {});
+              await refreshRemotes();
+            }}
             disabled={singleContextLocked}
           />
           <div className="search-container">
