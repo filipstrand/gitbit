@@ -725,10 +725,11 @@ export const App = () => {
       branch: filterBranch
     };
     setPendingGlobalFocus({ repoRoot: selection.repoRoot, sha: selection.commit.sha });
+    setSearchQuery('');
     setSearchScope('context');
     setSelectedRepoRoot(selection.repoRoot);
     setSelectedBranch(filterBranch);
-  }, [selectedGlobalCommit, setSearchScope, setSelectedBranch]);
+  }, [selectedGlobalCommit, setSearchQuery, setSearchScope, setSelectedBranch]);
 
   // Replay-like post-drop animation: FLIP animate the rewritten rows into their new positions.
   useLayoutEffect(() => {
