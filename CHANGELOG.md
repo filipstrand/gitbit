@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3
+
+- Global search: replaced commit placement pane with standard commit details (changed files) and a jump-to-context action. Selecting a commit shows files as in normal view; a back-arrow button opens a branch picker to jump to the repo, filter on a branch (without checkout), and focus the commit.
+- Global search: context branch picker shows `name | url` with search/filter, main first, and removal (×) per remote. First row is “+ Add new remote”.
+- Global search: branch ranking by introduction relevance (ancestry distance, merge-path hints, main/feature signals) so the most relevant contexts surface first.
+- Global search: picker stays on-screen near viewport edges (no off-screen overflow).
+- Remotes: new toolbar dropdown next to Filter to view configured remotes and add/remove them.
+
 ## 0.3.2
 
 - Global commit placement: branch lists are now compact to reduce noise, showing local/remote counts and only a short preview with a `+N more` suffix.
