@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Toolbar UX: Fetch is now an icon-only refresh control to reduce visual noise while keeping the same behavior.
+- Repo selector: shows an upstream update indicator when the checked-out branch has newer commits available upstream.
+- Repo metadata: refresh/fetch now updates upstream-behind status used by the repo dropdown indicator.
+
 ## 0.2.5
 
 - Commit UX: commit/amend now run on the first click by defaulting to all changed files when no explicit file selection exists.
