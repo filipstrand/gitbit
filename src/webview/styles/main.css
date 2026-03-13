@@ -322,6 +322,8 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 12px;
   position: relative;
 }
@@ -354,11 +356,44 @@ body {
   font-weight: bold;
 }
 
-.branch-item-star {
-  position: absolute;
-  left: 12px;
+.branch-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branch-item-star-toggle {
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.8;
+  cursor: pointer;
   font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  margin-right: 14px; /* keep room for hover flyout chevron */
+}
+
+.branch-item-star-toggle:hover {
+  opacity: 1;
+}
+
+.branch-item-star-toggle.is-favorite {
   color: #cca700;
+  opacity: 1;
+}
+
+.branch-item:hover .branch-item-star-toggle,
+.branch-item.hovered .branch-item-star-toggle,
+.branch-item.selected .branch-item-star-toggle {
+  color: inherit;
+}
+
+.branch-item:hover .branch-item-star-toggle.is-favorite,
+.branch-item.hovered .branch-item-star-toggle.is-favorite,
+.branch-item.selected .branch-item-star-toggle.is-favorite {
+  color: #f2c84b;
 }
 
 .branch-item-active-indicator {

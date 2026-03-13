@@ -1,7 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { Branch } from '../../extension/protocol/types';
+import { vscode } from '../state/vscode';
 
 type BranchHoverAction = 'checkout' | 'rebase' | 'rename' | 'delete';
+type BranchGroupType = 'important' | 'local' | 'remote';
+type BranchListItem = Branch & { type: BranchGroupType; label?: string; isFavorite?: boolean; fixedImportant?: boolean };
+const DEFAULT_FAVORITES = ['main', 'origin/main'];
 
 interface BranchSelectorProps {
   branches: Branch[];
@@ -41,6 +45,11 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   const hoveredElRef = useRef<HTMLDivElement | null>(null);
   const flyoutRef = useRef<HTMLDivElement | null>(null);
   const clearHoverTimerRef = useRef<number | null>(null);
+  const [favoriteBranches, setFavoriteBranches] = useState<Set<string>>(() => {
+    const state = vscode.getState?.() || {};
+    const saved = Array.isArray(state.favoriteBranches) ? state.favoriteBranches : [];
+    return new Set<string>([...DEFAULT_FAVORITES, ...saved.filter((v: unknown) => typeof v === 'string')]);
+  });
 
   const computeFlyoutTop = () => {
     const list = listRef.current;
@@ -116,47 +125,48 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
     };
   }, [hoveredBranch]);
 
+  useEffect(() => {
+    const state = vscode.getState?.() || {};
+    vscode.setState?.({
+      ...state,
+      favoriteBranches: Array.from(favoriteBranches)
+    });
+  }, [favoriteBranches]);
+
   const currentBranchName = useMemo(() => {
     return branches.find(b => b.current)?.name || '';
   }, [branches]);
 
   const filteredBranches = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    
     const headLabel = currentBranchName ? `HEAD (${currentBranchName})` : 'HEAD';
+    const existingBranchNames = new Set(branches.map(b => b.name));
+    const activeFavorites = new Set(
+      Array.from(favoriteBranches).filter(name => existingBranchNames.has(name))
+    );
 
-    const allItems: Array<Branch & { type: 'important' | 'local' | 'remote'; label?: string }> = [
-      ...(showHeadOption ? [{ name: 'HEAD', remote: false, current: false, type: 'important' as const, label: headLabel }] : []),
-      { name: 'main', remote: false, current: false, type: 'important' as const },
-      { name: 'origin/main', remote: true, current: false, type: 'important' as const },
-      { name: 'master', remote: false, current: false, type: 'important' as const },
-      { name: 'origin/master', remote: true, current: false, type: 'important' as const },
-      ...(showAllOption ? [{ name: '--all', remote: false, current: false, type: 'important' as const, label: 'All Branches' }] : []),
-      ...branches.map(b => ({ ...b, type: (b.remote ? 'remote' : 'local') as ('remote' | 'local') }))
+    const fixedImportant: BranchListItem[] = [
+      ...(showHeadOption ? [{ name: 'HEAD', remote: false, current: false, type: 'important' as const, label: headLabel, fixedImportant: true }] : []),
+      ...(showAllOption ? [{ name: '--all', remote: false, current: false, type: 'important' as const, label: 'All Branches', fixedImportant: true }] : []),
     ];
 
-    // Deduplicate by name, keeping the first occurrence (which would be from the important list)
-    const uniqueItems = [];
-    const names = new Set();
-    for (const item of allItems) {
-      const name = item.name;
-      if (!names.has(name)) {
-        // Special check to only include main/master if they actually exist in branches
-        if (item.type === 'important' && !['HEAD', '--all'].includes(name)) {
-          if (!branches.some(b => b.name === name)) continue;
-        }
-        names.add(name);
-        uniqueItems.push(item);
-      }
-    }
+    const importantFromFavorites: BranchListItem[] = branches
+      .filter(b => activeFavorites.has(b.name))
+      .map(b => ({ ...b, type: 'important' as const, isFavorite: true }));
 
-    if (!query) return uniqueItems;
+    const localAndRemote: BranchListItem[] = branches
+      .filter(b => !activeFavorites.has(b.name))
+      .map(b => ({ ...b, type: (b.remote ? 'remote' : 'local') as const, isFavorite: false }));
 
-    return uniqueItems.filter(b => 
+    const allItems: BranchListItem[] = [...fixedImportant, ...importantFromFavorites, ...localAndRemote];
+
+    if (!query) return allItems;
+
+    return allItems.filter(b =>
       b.name.toLowerCase().includes(query) || 
       (b.label && b.label.toLowerCase().includes(query))
     );
-  }, [branches, searchQuery, showAllOption, showHeadOption, currentBranchName]);
+  }, [branches, searchQuery, showAllOption, showHeadOption, currentBranchName, favoriteBranches]);
 
   const groups = useMemo(() => {
     const important = filteredBranches.filter(b => b.type === 'important');
@@ -297,10 +307,29 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
                       {branch.current && (
                         <span className="branch-item-active-indicator">●</span>
                       )}
-                      {branch.type === 'important' && branch.name !== '--all' && !branch.current && (
-                        <span className="branch-item-star">★</span>
+                      <span className="branch-item-name">{branch.label || branch.name.replace('remotes/', '')}</span>
+                      {branch.name !== 'HEAD' && branch.name !== '--all' && (
+                        <button
+                          className={`branch-item-star-toggle ${branch.isFavorite ? 'is-favorite' : ''}`}
+                          title={branch.isFavorite ? 'Remove from important' : 'Add to important'}
+                          aria-label={branch.isFavorite ? `Unstar ${branch.name}` : `Star ${branch.name}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setFavoriteBranches(prev => {
+                              const next = new Set(prev);
+                              if (next.has(branch.name)) {
+                                next.delete(branch.name);
+                              } else {
+                                next.add(branch.name);
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          {branch.isFavorite ? '★' : '☆'}
+                        </button>
                       )}
-                      {branch.label || branch.name.replace('remotes/', '')}
                     </div>
                   ))}
                 </React.Fragment>

@@ -83,5 +83,23 @@ describe('BranchSelector', () => {
     fireEvent.mouseEnter(screen.getByText('origin/main'));
     expect(screen.getByRole('button', { name: 'Rename' })).toBeDisabled();
   });
+
+  it('lets users star a branch and move it to Important', () => {
+    render(
+      <BranchSelector
+        branches={branches}
+        selectedBranch="main"
+        onSelect={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByText('main'));
+    expect(screen.getByText('Local Branches')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Star feature/refactor'));
+
+    expect(screen.getByLabelText('Unstar feature/refactor')).toBeInTheDocument();
+    expect(screen.queryByText('Local Branches')).not.toBeInTheDocument();
+  });
 });
 
