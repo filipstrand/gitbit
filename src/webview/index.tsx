@@ -771,7 +771,7 @@ export const App = () => {
                 ref={searchInputRef}
                 type="text" 
                 className="search-input" 
-                placeholder="Search message, hash..." 
+                placeholder="Search message, hash, author..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />

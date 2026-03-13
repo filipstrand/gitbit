@@ -33,6 +33,8 @@ export function useCommits() {
     return commits.filter(c => 
       c.subject.toLowerCase().includes(query) || 
       c.sha.toLowerCase().includes(query) ||
+      c.authorName.toLowerCase().includes(query) ||
+      c.authorEmail.toLowerCase().includes(query) ||
       (c as any).message?.toLowerCase().includes(query)
     );
   }, [commits, searchQuery]);

@@ -230,6 +230,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
       .filter(c =>
         c.subject.toLowerCase().includes(q) ||
         c.sha.toLowerCase().includes(q) ||
+        c.authorName.toLowerCase().includes(q) ||
+        c.authorEmail.toLowerCase().includes(q) ||
         c.decorations.toLowerCase().includes(q)
       )
       .slice(0, maxMatchesPerRepo);
