@@ -1514,3 +1514,66 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.global-context-picker {
+  position: fixed;
+  width: 320px;
+  max-width: min(90vw, 420px);
+  max-height: min(60vh, 420px);
+  background: var(--vscode-menu-background, #1e1e1e);
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--border-color));
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.global-context-picker-header {
+  padding: 8px 10px 6px;
+  font-size: 11px;
+  opacity: 0.82;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.global-context-picker-search {
+  margin: 8px 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-input-border, var(--border-color));
+  border-radius: 4px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-size: 12px;
+}
+
+.global-context-picker-list {
+  overflow: auto;
+  padding: 4px 0 8px;
+}
+
+.global-context-picker-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.global-context-picker-item:hover,
+.global-context-picker-item:focus-visible {
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground));
+  outline: none;
+}
+
+.global-context-picker-empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  opacity: 0.7;
+}

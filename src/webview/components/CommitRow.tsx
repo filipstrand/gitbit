@@ -26,7 +26,7 @@ interface CommitRowProps {
   onSelectedAction?: {
     iconClassName: string;
     title: string;
-    onClick: () => void;
+    onClick: (anchorRect?: DOMRect) => void;
   };
 }
 
@@ -110,7 +110,7 @@ export const CommitRow: React.FC<CommitRowProps> = ({
 
   const handleSelectedActionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelectedAction?.onClick();
+    onSelectedAction?.onClick((e.currentTarget as HTMLElement).getBoundingClientRect());
   };
 
   return (

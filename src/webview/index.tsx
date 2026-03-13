@@ -7,6 +7,7 @@ import { DetailsPane } from './components/DetailsPane';
 import { SquashPreview } from './components/SquashPreview';
 import { ContextMenu } from './components/ContextMenu';
 import { BranchSelector } from './components/BranchSelector';
+import { GlobalContextPicker } from './components/GlobalContextPicker';
 
 
 import { RepoSelector } from './components/RepoSelector';
@@ -123,6 +124,12 @@ export const App = () => {
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [selectedRepoRoot, setSelectedRepoRoot] = useState<string>(() => initialWebviewState.selectedRepoRoot || '');
   const repoSwitchFilterOverrideRef = useRef<{ repoRoot: string; branch: string } | null>(null);
+  const [contextPicker, setContextPicker] = useState<{
+    selection: GlobalCommitSelection;
+    branches: string[];
+    anchorRect?: { left: number; right: number; bottom: number; width: number };
+  } | null>(null);
+  const [contextPickerQuery, setContextPickerQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const refreshRef = useRef(refresh);
 
@@ -204,6 +211,8 @@ export const App = () => {
   useEffect(() => {
     if (!isGlobalSearchActive) {
       setSelectedGlobalCommit(null);
+      setContextPicker(null);
+      setContextPickerQuery('');
       return;
     }
     if (!selectedGlobalCommit) return;
@@ -691,10 +700,41 @@ export const App = () => {
     }
   }, [singleContextLocked, hasMore, loadMore, loading, loadingMore]);
 
-  const handleJumpToGlobalCommitContext = useCallback(async () => {
+  const runContextJump = useCallback((selection: GlobalCommitSelection, filterBranch: string) => {
+    repoSwitchFilterOverrideRef.current = {
+      repoRoot: selection.repoRoot,
+      branch: filterBranch
+    };
+    setPendingGlobalFocus({ repoRoot: selection.repoRoot, sha: selection.commit.sha });
+    setSearchQuery('');
+    setSearchScope('context');
+    setSelectedRepoRoot(selection.repoRoot);
+    setSelectedBranch(filterBranch);
+  }, [setSearchQuery, setSearchScope, setSelectedBranch]);
+
+  const rankContextBranch = useCallback((branch: string) => {
+    const b = branch.toLowerCase();
+    if (b === 'main' || b === 'origin/main') return 0;
+    if (b === 'master' || b === 'origin/master') return 1;
+    if (b.endsWith('/main') || b.endsWith('/master')) return 2;
+    if (b.includes('main')) return 3;
+    return 4;
+  }, []);
+
+  const prioritizeContextBranches = useCallback((branches: string[]) => {
+    return [...branches].sort((a, b) => {
+      const ra = rankContextBranch(a);
+      const rb = rankContextBranch(b);
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b);
+    });
+  }, [rankContextBranch]);
+
+  const handleJumpToGlobalCommitContext = useCallback(async (anchorRect?: DOMRect) => {
     if (!selectedGlobalCommit) return;
     const selection = selectedGlobalCommit;
-    let filterBranch = 'HEAD';
+    let preferredBranch = 'HEAD';
+    let candidateBranches: string[] = [];
 
     try {
       const state = vscode.getState?.() || {};
@@ -706,30 +746,44 @@ export const App = () => {
         baseBranch: preferredBaseBranch || undefined
       });
 
-      const localBranches = context.containingLocalBranches || [];
-      if (context.resolvedBaseBranch && localBranches.includes(context.resolvedBaseBranch)) {
-        filterBranch = context.resolvedBaseBranch;
-      } else if (localBranches.length > 0) {
-        filterBranch = localBranches[0];
+      const locals = (context.containingLocalBranches || []).filter(Boolean);
+      const remotes = (context.containingRemoteBranches || []).filter(Boolean);
+      const combined = Array.from(new Set<string>([...locals, ...remotes]));
+      candidateBranches = prioritizeContextBranches(combined);
+
+      if (context.resolvedBaseBranch && locals.includes(context.resolvedBaseBranch)) {
+        preferredBranch = context.resolvedBaseBranch;
+      } else if (locals.length > 0) {
+        preferredBranch = locals[0];
       } else if (context.resolvedBaseBranch) {
-        filterBranch = context.resolvedBaseBranch;
-      } else if ((context.containingRemoteBranches || []).length > 0) {
-        filterBranch = context.containingRemoteBranches[0];
+        preferredBranch = context.resolvedBaseBranch;
+      } else if (remotes.length > 0) {
+        preferredBranch = remotes[0];
       }
     } catch {
       // If placement lookup fails, still navigate to the repo and focus by SHA best-effort.
     }
 
-    repoSwitchFilterOverrideRef.current = {
-      repoRoot: selection.repoRoot,
-      branch: filterBranch
-    };
-    setPendingGlobalFocus({ repoRoot: selection.repoRoot, sha: selection.commit.sha });
-    setSearchQuery('');
-    setSearchScope('context');
-    setSelectedRepoRoot(selection.repoRoot);
-    setSelectedBranch(filterBranch);
-  }, [selectedGlobalCommit, setSearchQuery, setSearchScope, setSelectedBranch]);
+    if (candidateBranches.length > 1) {
+      setContextPicker({
+        selection,
+        branches: candidateBranches,
+        anchorRect: anchorRect
+          ? {
+              left: anchorRect.left,
+              right: anchorRect.right,
+              bottom: anchorRect.bottom,
+              width: anchorRect.width
+            }
+          : undefined
+      });
+      setContextPickerQuery('');
+      return;
+    }
+
+    const finalBranch = candidateBranches[0] || preferredBranch;
+    runContextJump(selection, finalBranch);
+  }, [prioritizeContextBranches, runContextJump, selectedGlobalCommit]);
 
   // Replay-like post-drop animation: FLIP animate the rewritten rows into their new positions.
   useLayoutEffect(() => {
@@ -1233,6 +1287,23 @@ export const App = () => {
               ];
             })()
           ]}
+        />
+      )}
+      {contextPicker && (
+        <GlobalContextPicker
+          branches={contextPicker.branches}
+          query={contextPickerQuery}
+          onQueryChange={setContextPickerQuery}
+          onSelect={(branch) => {
+            runContextJump(contextPicker.selection, branch);
+            setContextPicker(null);
+            setContextPickerQuery('');
+          }}
+          onClose={() => {
+            setContextPicker(null);
+            setContextPickerQuery('');
+          }}
+          anchorRect={contextPicker.anchorRect}
         />
       )}
     </div>
