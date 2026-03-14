@@ -728,6 +728,21 @@ export const App = () => {
     setSelectedBranch(filterBranch);
   }, [setSearchQuery, setSearchScope, setSelectedBranch]);
 
+  const isHereSearchActive = !isGlobalSearchActive && searchQuery.trim().length > 0;
+
+  const handleHereSearchBack = useCallback(() => {
+    const sha = selectedShas[0];
+    if (!sha) return;
+    setSearchQuery('');
+    // Keep selection; scroll after list re-renders with full commits
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = commitRowElsRef.current.get(sha);
+        if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+    });
+  }, [selectedShas, setSearchQuery]);
+
   const handleJumpToGlobalCommitContext = useCallback(async (anchorRect?: DOMRect) => {
     if (!selectedGlobalCommit) return;
     const selection = selectedGlobalCommit;
@@ -1080,6 +1095,17 @@ export const App = () => {
                           onDragFinished={endMoveDrag}
                           movePending={movePending}
                           moveFailed={moveFailedShas.includes(commit.sha)}
+                          onSelectedAction={
+                            isHereSearchActive &&
+                            selectedShas.length === 1 &&
+                            selectedShas[0] === commit.sha
+                              ? {
+                                  iconClassName: 'codicon-arrow-left global-context-jump-icon',
+                                  title: 'Show full list and highlight this commit',
+                                  onClick: handleHereSearchBack
+                                }
+                              : undefined
+                          }
                         />
                       ].filter(Boolean) as any[];
                     });
