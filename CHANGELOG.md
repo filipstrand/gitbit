@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- Here search: back-arrow button on selected commit (similar to global search) clears the search filter and shows the full commit list.
+- Here search: selected commit stays highlighted and is scrolled into view in the full list.
+
 ## 0.3.3
 
 - Global search: replaced commit placement pane with standard commit details (changed files) and a jump-to-context action. Selecting a commit shows files as in normal view; a back-arrow button opens a branch picker to jump to the repo, filter on a branch (without checkout), and focus the commit.
