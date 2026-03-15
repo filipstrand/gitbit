@@ -3295,6 +3295,14 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     );
 
     const nonce = getNonce();
+    let version = '0.0.0';
+    try {
+      const pkgPath = path.join(this._extensionUri.fsPath, 'package.json');
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      version = pkg.version || version;
+    } catch {
+      /* ignore */
+    }
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -3306,6 +3314,7 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
     <link href="${codiconsUri}" rel="stylesheet">
     <script nonce="${nonce}">
         window.iconsUri = "${iconsUri}";
+        window.gitbitVersion = "${version}";
     </script>
     <title>GitBit</title>
 </head>

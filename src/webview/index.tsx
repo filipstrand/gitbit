@@ -961,6 +961,9 @@ export const App = () => {
             >
               {searchScope === 'global' ? 'Global' : 'Here'}
             </button>
+            <span className="version-badge" title="GitBit version">
+              v{(typeof (window as any).gitbitVersion === 'string' ? (window as any).gitbitVersion : '0.0.0')}
+            </span>
           </div>
         </div>
       </div>

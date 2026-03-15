@@ -435,11 +435,12 @@ body {
 .repo-switcher .branch-selector-trigger.repo-dirty {
   color: var(--vscode-gitDecoration-modifiedResourceForeground);
   border-color: rgba(204, 167, 0, 0.45);
+  background-color: rgba(204, 167, 0, 0.1);
 }
 
 .repo-switcher .branch-selector-trigger.repo-dirty:hover {
   border-color: var(--vscode-gitDecoration-modifiedResourceForeground);
-  background-color: rgba(204, 167, 0, 0.08);
+  background-color: rgba(204, 167, 0, 0.16);
 }
 
 .repo-switcher .branch-item.repo-dirty {
@@ -448,6 +449,11 @@ body {
 
 .repo-switcher .branch-selector-trigger {
   padding-right: 32px;
+  background-color: rgba(204, 167, 0, 0.06);
+}
+
+.repo-switcher .branch-selector-trigger:hover {
+  background-color: rgba(204, 167, 0, 0.1);
 }
 
 .repo-selector-current-label {
@@ -596,6 +602,15 @@ body {
   align-items: stretch;
 }
 
+.toolbar-version {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.65;
+  margin-left: 8px;
+  align-self: center;
+  white-space: nowrap;
+}
+
 .search-input-shell {
   position: relative;
   display: flex;
@@ -634,6 +649,15 @@ body {
 
 .search-clear:hover {
   opacity: 1;
+}
+
+.version-badge {
+  margin-left: 8px;
+  padding: 0 4px;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  align-self: center;
 }
 
 .search-scope-inline {
