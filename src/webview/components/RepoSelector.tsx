@@ -127,6 +127,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
             <span className="codicon codicon-arrow-down" />
           </span>
         )}
+        <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
       </button>
 
       {isOpen && (

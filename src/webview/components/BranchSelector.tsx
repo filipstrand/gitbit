@@ -259,7 +259,8 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
         title={currentLabel}
         style={triggerWidthPx ? { width: `${triggerWidthPx}px` } : undefined}
       >
-        {currentLabel}
+        <span className="branch-selector-trigger-text">{currentLabel}</span>
+        <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
       </div>
 
       {isOpen && !disabled && (

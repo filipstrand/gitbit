@@ -40,7 +40,9 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
   return (
     <div className={`branch-selector-container ${className} ${disabled ? 'is-disabled' : ''}`} ref={containerRef}>
       {!!label && <span className="toolbar-label">{label}</span>}
-      <button
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
         className="branch-selector-trigger"
         onClick={() => {
           if (disabled) return;
@@ -48,11 +50,21 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
           if (next) onOpen?.();
           setIsOpen(next);
         }}
-        disabled={disabled}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const next = !isOpen;
+            if (next) onOpen?.();
+            setIsOpen(!isOpen);
+          }
+        }}
         title="Show configured remotes"
+        aria-disabled={disabled}
       >
-        Remotes
-      </button>
+        <span className="branch-selector-trigger-text">Remotes</span>
+        <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
+      </div>
       {isOpen && !disabled && (
         <div className="branch-selector-popup remote-selector-popup">
           <div className="branch-popup-content">

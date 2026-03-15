@@ -152,11 +152,16 @@ body {
 }
 
 .branch-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background-color: var(--vscode-dropdown-background);
   color: var(--vscode-dropdown-foreground);
   border: 1px solid var(--vscode-dropdown-border);
-  padding: 1px 20px 1px 8px;
+  padding: 1px 8px 1px 8px;
+  font-family: inherit;
   font-size: 11px;
+  line-height: inherit;
   border-radius: 2px;
   cursor: pointer;
   min-width: 0;
@@ -169,14 +174,25 @@ body {
   white-space: nowrap;
 }
 
+.branch-selector-trigger-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.branch-selector-arrow {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+}
+
 .branch-selector-trigger:after {
-  content: "▼";
-  position: absolute;
-  right: 6px;
-  font-size: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.6;
+  display: none;
 }
 
 .branch-selector-trigger:hover {
@@ -515,7 +531,7 @@ body {
 }
 
 .repo-switcher .branch-selector-trigger {
-  padding-right: 32px;
+  padding-right: 20px;
   color: color-mix(in srgb, var(--vscode-gitDecoration-modifiedResourceForeground) 42%, var(--vscode-foreground));
   border-color: rgba(204, 167, 0, 0.32);
 }
@@ -594,6 +610,7 @@ body {
 }
 
 .remote-switcher .branch-selector-trigger {
+  padding-right: 18px;
   color: var(--vscode-textLink-foreground);
   border-color: color-mix(in srgb, var(--vscode-textLink-foreground) 35%, transparent);
 }
