@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Global search: increased scan limit (5000 commits per repo, 500 max matches) for deeper history.
+- Remotes: removed "Remotes:" label; toolbar shows only the dropdown.
+- Upstream indicator: replaced Unicode arrow with codicon to match GitBit style.
+
 ## 0.3.4
 
 - Here search: back-arrow button on selected commit (similar to global search) clears the search filter and shows the full commit list.
