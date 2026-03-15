@@ -627,13 +627,6 @@ body {
   opacity: 0.85;
 }
 
-/* Repo dropdown uses dot instead of chevron */
-.repo-switcher .branch-selector-arrow.repo-selector-dot {
-  margin-left: auto;
-  font-size: 14px;
-  opacity: 0.7;
-}
-
 .repo-switcher .branch-selector-popup {
   width: 420px;
 }

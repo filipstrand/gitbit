@@ -87,7 +87,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
       aria-label={selectedRepoHasUpstreamUpdates ? 'Upstream has newer commits' : undefined}
     >
       {selectedRepoHasUpstreamUpdates && (
-        <span className="codicon codicon-chevron-down" aria-hidden />
+        <span className="codicon codicon-circle-small-filled" aria-hidden />
       )}
     </span>
   );
@@ -102,7 +102,6 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
           className={`branch-selector-trigger repo-selector-static ${selectedRepoIsDirty ? 'repo-dirty' : ''}`}
           title={repos[0].root}
         >
-          {selectedRepoHasUpstreamUpdates && upstreamSlot}
           <span className="repo-selector-current-label">{currentLabel}</span>
         </span>
       </div>
@@ -123,9 +122,8 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
         title={selectedRoot || ''}
         disabled={disabled || repos.length === 0}
       >
-        {upstreamSlot}
         <span className="repo-selector-current-label">{currentLabel}</span>
-        <span className="branch-selector-arrow repo-selector-dot codicon codicon-circle-small-filled" aria-hidden />
+        <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
       </button>
 
       {isOpen && (
@@ -154,7 +152,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
                 >
                   <span className={`repo-upstream-slot ${repo.hasUpstreamUpdates ? 'has-updates' : ''}`} title={repo.hasUpstreamUpdates ? 'Upstream has newer commits' : undefined}>
                     {repo.hasUpstreamUpdates && (
-                      <span className="codicon codicon-chevron-down" aria-hidden />
+                      <span className="codicon codicon-circle-small-filled" aria-hidden />
                     )}
                   </span>
                   <span className="repo-item-main">
