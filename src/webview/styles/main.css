@@ -474,6 +474,12 @@ body {
   opacity: 0.85;
   color: var(--vscode-gitDecoration-untrackedResourceForeground, var(--vscode-charts-blue));
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.repo-upstream-indicator .codicon {
+  font-size: 12px;
 }
 
 .repo-switcher .branch-selector-popup {
