@@ -16,26 +16,6 @@ import { vscode, request } from './state/vscode';
 import { RepoInfo, Commit, GlobalCommitContextResponse, RemoteInfo } from '../extension/protocol/types';
 import './styles/main.css';
 
-/** Parse a remote URL (SSH or HTTPS) to a GitHub web base URL, or null if not GitHub-like. */
-function getGitHubCommitUrl(remotes: RemoteInfo[], sha: string): string | null {
-  const origin = remotes.find(r => r.name === 'origin') || remotes[0];
-  if (!origin?.url) return null;
-  const url = origin.url.trim();
-  // SSH: git@github.com:owner/repo.git or git@host:owner/repo
-  const sshMatch = url.match(/^git@([^:]+):([^/]+\/[^/]+?)(?:\.git)?$/);
-  if (sshMatch) {
-    const [, host, path] = sshMatch;
-    return `https://${host}/${path.replace(/\.git$/, '')}/commit/${sha}`;
-  }
-  // HTTPS: https://github.com/owner/repo.git or https://host/owner/repo
-  const httpsMatch = url.match(/^https?:\/\/([^/]+)\/([^/]+\/[^/]+?)(?:\.git)?\/?$/);
-  if (httpsMatch) {
-    const [, host, path] = httpsMatch;
-    return `https://${host}/${path.replace(/\.git$/, '')}/commit/${sha}`;
-  }
-  return null;
-}
-
 interface GlobalCommitSelection {
   repoRoot: string;
   repoLabel: string;
@@ -111,6 +91,9 @@ export const App = () => {
   const [anchorSha, setAnchorSha] = useState<string | null>(null);
   const [activeSha, setActiveSha] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ sha: string, x: number, y: number } | null>(null);
+  const [globalContextMenu, setGlobalContextMenu] = useState<{
+    sha: string; repoRoot: string; repoLabel: string; x: number; y: number;
+  } | null>(null);
   const hasInitiallySelected = useRef(false);
   const hadUncommittedRef = useRef<boolean | null>(null);
   const [actionStatus, setActionStatus] = useState<Record<string, 'idle' | 'running' | 'success'>>({});
@@ -763,9 +746,12 @@ export const App = () => {
     });
   }, [selectedShas, setSearchQuery]);
 
-  const handleJumpToGlobalCommitContext = useCallback(async (anchorRect?: DOMRect) => {
-    if (!selectedGlobalCommit) return;
-    const selection = selectedGlobalCommit;
+  const handleJumpToGlobalCommitContext = useCallback(async (
+    anchorRect?: DOMRect,
+    selectionOverride?: GlobalCommitSelection
+  ) => {
+    const selection = selectionOverride ?? selectedGlobalCommit;
+    if (!selection) return;
     let preferredBranch = 'HEAD';
     let candidateBranches: string[] = [];
 
@@ -1043,7 +1029,12 @@ export const App = () => {
                               commit
                             });
                           }}
-                          onContextMenu={() => {}}
+                          onContextMenu={(_, x, y) => setGlobalContextMenu({
+                            sha: commit.sha,
+                            repoRoot: group.repoRoot,
+                            repoLabel: group.repoLabel,
+                            x, y
+                          })}
                           onSelectedAction={
                             selectedGlobalCommit?.repoRoot === group.repoRoot &&
                             selectedGlobalCommit?.commit.sha === commit.sha
@@ -1213,11 +1204,20 @@ export const App = () => {
 
               // When multiple commits are selected, make Squash the primary action.
               if (isMultiContext && hasMulti) {
+                const rightClickedSha = contextMenu.sha;
                 return [
+                  {
+                    label: 'Go to GitHub…',
+                    iconImg: 'custom/github.svg',
+                    primary: true,
+                    onClick: async () => {
+                      const url = await request<string | null>('git/getGitHubCommitUrl', { sha: rightClickedSha });
+                      if (url) await request('env/openExternal', { url });
+                    }
+                  },
                   {
                     label: 'Squash…',
                     icon: 'codicon-combine',
-                    primary: true,
                     onClick: () => gitAction('git/squash', { shas: contextShas })
                   },
                   {
@@ -1271,14 +1271,17 @@ export const App = () => {
               const tagNames: string[] = (singleCommit?.refs || [])
                 .filter((r: any) => r?.type === 'tag' && typeof r?.name === 'string' && r.name.length > 0)
                 .map((r: any) => String(r.name));
-              const githubUrl = getGitHubCommitUrl(remotes, singleSha);
               return [
-                ...(githubUrl ? [{
+                {
                   label: 'Go to GitHub…',
-                  icon: 'codicon-link-external',
+                  iconImg: 'custom/github.svg',
                   primary: true,
-                  onClick: () => request('env/openExternal', { url: githubUrl })
-                }, { separator: true }] : []),
+                  onClick: async () => {
+                    const url = await request<string | null>('git/getGitHubCommitUrl', { sha: singleSha });
+                    if (url) await request('env/openExternal', { url });
+                  }
+                },
+                { separator: true },
                 {
                   label: 'Rename',
                   icon: 'codicon-edit',
@@ -1360,6 +1363,42 @@ export const App = () => {
                 }
               ];
             })()
+          ]}
+        />
+      )}
+      {isGlobalSearchActive && globalContextMenu && (
+        <ContextMenu
+          x={globalContextMenu.x}
+          y={globalContextMenu.y}
+          onClose={() => setGlobalContextMenu(null)}
+          actions={[
+            {
+              label: 'Go to GitHub…',
+              iconImg: 'custom/github.svg',
+              primary: true,
+              onClick: async () => {
+                const url = await request<string | null>('git/getGitHubCommitUrl', {
+                  sha: globalContextMenu.sha,
+                  repoRoot: globalContextMenu.repoRoot
+                });
+                if (url) await request('env/openExternal', { url });
+              }
+            },
+            { separator: true },
+            {
+              label: 'Open in repo context',
+              icon: 'codicon-arrow-left',
+              onClick: () => {
+                const commit = globalGraphGroups.flatMap((g: any) => g.commits || []).find((c: any) => c.sha === globalContextMenu.sha)
+                  || { sha: globalContextMenu.sha, parents: [], authorName: '', authorEmail: '', authorDateIso: '', subject: '', decorations: '' };
+                handleJumpToGlobalCommitContext(undefined, {
+                  repoRoot: globalContextMenu.repoRoot,
+                  repoLabel: globalContextMenu.repoLabel,
+                  commit
+                });
+                setGlobalContextMenu(null);
+              }
+            }
           ]}
         />
       )}

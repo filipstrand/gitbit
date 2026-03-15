@@ -1852,6 +1852,53 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             this._sendResponse(message.requestId, list);
             break;
           }
+          case 'git/getGitHubCommitUrl': {
+            const sha = String(message.payload?.sha || '').trim();
+            if (!sha) {
+              this._sendError(message.requestId, 'Missing commit SHA');
+              break;
+            }
+            const repoRoot = String(message.payload?.repoRoot || '').trim();
+            const runner = repoRoot
+              ? (this._gitRunnersByRoot.get(repoRoot) || new GitRunner(repoRoot))
+              : this._gitRunner;
+            if (!runner) {
+              this._sendResponse(message.requestId, null);
+              break;
+            }
+            const remotesRes = await runner.run(['remote', '-v']);
+            if (remotesRes.exitCode !== 0) {
+              this._sendResponse(message.requestId, null);
+              break;
+            }
+            const byName = new Map<string, string>();
+            for (const line of String(remotesRes.stdout || '').split('\n')) {
+              const m = line.trim().match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/);
+              if (!m) continue;
+              const [, name, url] = m;
+              if (!byName.has(name)) byName.set(name, url);
+            }
+            const origin = byName.get('origin') || byName.values().next().value;
+            if (!origin) {
+              this._sendResponse(message.requestId, null);
+              break;
+            }
+            const url = origin.trim();
+            let base = '';
+            const sshMatch = url.match(/^git@([^:]+):([^/]+\/[^/]+?)(?:\.git)?$/);
+            if (sshMatch) {
+              const [, host, path] = sshMatch;
+              base = `https://${host}/${path.replace(/\.git$/, '')}`;
+            } else {
+              const httpsMatch = url.match(/^https?:\/\/([^/]+)\/([^/]+\/[^/]+?)(?:\.git)?\/?$/);
+              if (httpsMatch) {
+                const [, host, path] = httpsMatch;
+                base = `https://${host}/${path.replace(/\.git$/, '')}`;
+              }
+            }
+            this._sendResponse(message.requestId, base ? `${base}/commit/${sha}` : null);
+            break;
+          }
           case 'git/remoteAdd': {
             if (!this._gitRunner) {
               this._sendError(message.requestId, 'No repository found');

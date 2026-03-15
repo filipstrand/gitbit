@@ -6,6 +6,8 @@ type MenuAction = {
   danger?: boolean;
   tone?: 'warning' | 'success';
   icon?: string;
+  /** Custom image path (relative to window.iconsUri), e.g. 'custom/github.svg' */
+  iconImg?: string;
   disabled?: boolean;
   primary?: boolean;
   separator?: boolean;
@@ -168,7 +170,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
               e.currentTarget.style.color = baseColor;
             }}
           >
-            {action.icon ? (
+            {action.iconImg && typeof (window as any).iconsUri === 'string' ? (
+              <img
+                src={`${(window as any).iconsUri}/${action.iconImg}`}
+                alt=""
+                style={{ width: 16, height: 16, opacity: 0.9, flexShrink: 0 }}
+              />
+            ) : action.icon ? (
               <span
                 className={`codicon ${action.icon}`}
                 style={{ width: '16px', textAlign: 'center', opacity: 0.9 }}
@@ -261,7 +269,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, actions
                   e.currentTarget.style.color = baseColor;
                 }}
               >
-                {action.icon ? (
+                {action.iconImg && typeof (window as any).iconsUri === 'string' ? (
+                  <img
+                    src={`${(window as any).iconsUri}/${action.iconImg}`}
+                    alt=""
+                    style={{ width: 16, height: 16, opacity: 0.9, flexShrink: 0 }}
+                  />
+                ) : action.icon ? (
                   <span
                     className={`codicon ${action.icon}`}
                     style={{ width: '16px', textAlign: 'center', opacity: 0.9 }}
