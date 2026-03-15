@@ -411,6 +411,35 @@ body {
   color: #f2c84b;
 }
 
+.branch-item-copy {
+  font-size: 14px;
+  opacity: 0;
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground);
+  border-radius: 4px;
+  padding: 2px;
+  margin: -2px;
+  flex-shrink: 0;
+  transition: background-color 90ms ease, box-shadow 90ms ease, opacity 90ms ease;
+}
+
+.branch-item:hover .branch-item-copy,
+.branch-item.hovered .branch-item-copy,
+.branch-item.selected .branch-item-copy {
+  opacity: 0.8;
+}
+
+.branch-item-copy:hover {
+  opacity: 1 !important;
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.14));
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder, rgba(255, 255, 255, 0.25)) inset;
+}
+
+.branch-item-copy:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, rgba(255, 255, 255, 0.35));
+  outline-offset: 1px;
+}
+
 .branch-item-active-indicator {
   position: absolute;
   left: 12px;
