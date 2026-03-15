@@ -25,7 +25,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   branches, 
   selectedBranch, 
   onSelect,
-  label = 'Branch:',
+  label = '',
   showAllOption = true,
   showHeadOption = true,
   className = '',
@@ -244,7 +244,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
 
   return (
     <div className={`branch-selector-container ${className} ${disabled ? 'is-disabled' : ''}`} ref={containerRef}>
-      <span className="toolbar-label">{label}</span>
+      {!!label && <span className="toolbar-label">{label}</span>}
       <div 
         ref={triggerRef}
         className="branch-selector-trigger" 

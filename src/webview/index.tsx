@@ -60,7 +60,7 @@ export const App = () => {
     date: number;
     graph: number;
   }>(() => initialWebviewState.colWidths || {
-    hash: 55,
+    hash: 72,
     author: 120,
     date: 140,
     graph: graphWidth
@@ -378,7 +378,7 @@ export const App = () => {
       const { col, startX, startWidth } = colResizeRef.current;
       const dx = e.clientX - startX;
 
-      const min = col === 'hash' ? 48 : col === 'author' ? 80 : col === 'date' ? 120 : 40;
+      const min = col === 'hash' ? 64 : col === 'author' ? 80 : col === 'date' ? 120 : 40;
       const containerWidth = leftPaneRef.current?.clientWidth || 0;
       const minMessage = 220;
       const otherSum =
@@ -885,7 +885,7 @@ export const App = () => {
           </div>
 
           <RepoSelector
-            label="Repo:"
+            label=""
             className="repo-switcher"
             repos={repos}
             selectedRoot={selectedRepoRoot}
@@ -893,8 +893,8 @@ export const App = () => {
             onOpen={refreshRepos}
             disabled={singleContextLocked}
           />
-          <BranchSelector 
-            label="Branch:"
+          <BranchSelector
+            label=""
             className="branch-switcher"
             branches={branches}
             selectedBranch={currentBranchName}
@@ -915,8 +915,8 @@ export const App = () => {
               }
             }}
           />
-          <BranchSelector 
-            label="Filter:"
+          <BranchSelector
+            label=""
             branches={branches}
             selectedBranch={selectedBranch}
             onSelect={setSelectedBranch}

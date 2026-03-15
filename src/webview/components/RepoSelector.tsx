@@ -16,7 +16,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   selectedRoot,
   onSelect,
   onOpen,
-  label = 'Repo:',
+  label = '',
   className = '',
   disabled = false
 }) => {
