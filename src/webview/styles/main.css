@@ -263,7 +263,7 @@ body {
   position: absolute;
   left: calc(100% + 6px);
   top: 0;
-  width: 180px;
+  width: 195px;
   border-left: 1px solid var(--vscode-menu-separatorBackground);
   padding: 8px;
   display: flex;
@@ -503,11 +503,44 @@ body {
 
 .repo-item-main {
   min-width: 0;
-  display: inline-flex;
+  flex: 1;
+  display: flex;
   align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.repo-item-branch {
+  flex: 0 0 200px;
+  width: 200px;
+  min-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.repo-item-branch.repo-item-branch-non-main {
+  color: color-mix(in srgb, var(--vscode-charts-yellow, #f9d65c) 55%, var(--vscode-descriptionForeground) 45%);
+}
+
+.repo-item-sep {
+  flex: 0 0 auto;
+  opacity: 0.5;
+  font-size: 11px;
+}
+
+.repo-item-label {
+  flex: 1;
+  min-width: 0;
+  max-width: 195px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .repo-upstream-indicator {
@@ -525,7 +558,7 @@ body {
 }
 
 .repo-switcher .branch-selector-popup {
-  width: 300px;
+  width: 420px;
 }
 
 .remote-switcher .branch-selector-trigger {

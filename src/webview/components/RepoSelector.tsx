@@ -50,7 +50,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   const getBranch = (repo: RepoInfo) => (repo.currentBranch || '').trim();
   const formatRepoLabelForSearch = (repo: RepoInfo) => {
     const branch = getBranch(repo);
-    return branch ? `${repo.label} (${branch})` : repo.label;
+    return branch ? `${repo.label} | ${branch}` : repo.label;
   };
 
   const currentLabel = useMemo(() => {
@@ -152,25 +152,14 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
                   }}
                 >
                   <span className="repo-item-main">
-                    <span>{repo.label}</span>
-                    {!!getBranch(repo) && (() => {
-                      const branch = getBranch(repo);
-                      const branchLower = branch.toLowerCase();
-                      const isNonMain = branchLower !== 'main';
-                      const nonMainColor =
-                        'color-mix(in srgb, var(--vscode-charts-yellow, #f9d65c) 55%, var(--vscode-descriptionForeground) 45%)';
-                      return (
-                      <span
-                        style={{
-                          marginLeft: '8px',
-                          color: isNonMain ? nonMainColor : 'var(--vscode-descriptionForeground)',
-                          opacity: 0.8
-                        }}
-                      >
-                        ({branch})
-                      </span>
-                      );
-                    })()}
+                    <span className="repo-item-label" title={repo.label}>{repo.label}</span>
+                    <span className="repo-item-sep">|</span>
+                    <span
+                      className={`repo-item-branch ${(getBranch(repo) || '').toLowerCase() !== 'main' ? 'repo-item-branch-non-main' : ''}`}
+                      title={getBranch(repo) || ''}
+                    >
+                      {getBranch(repo) || '—'}
+                    </span>
                   </span>
                   {repo.hasUpstreamUpdates && (
                     <span
