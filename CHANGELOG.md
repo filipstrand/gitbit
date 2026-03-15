@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Toolbar: codicon chevrons for PULL/PUSH, separator after push, bold labels.
+- Search scope: Here/Global replaced with home and globe icons.
+- Remotes: trash icon for remove, REMOTES/ALL BRANCHES caps, single-entry popup symmetry.
+- Repo: upstream indicator uses chevron-down to match other dropdowns.
+
 ## 0.4.0
 
 - Go to GitHub… in commit context menu (single, multi-select, global search) with official GitHub icon.
