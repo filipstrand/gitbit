@@ -864,7 +864,7 @@ export const App = () => {
               aria-label="Fetch all branches and refresh upstream status"
               disabled={singleContextLocked || actionStatus['git/fetch'] === 'running'}
             >
-              <span className={`button-icon ${actionStatus['git/fetch'] === 'running' ? 'spin' : ''}`}>
+              <span className={`button-icon ${actionStatus['git/fetch'] === 'running' ? 'wiggle' : ''}`}>
                 {actionStatus['git/fetch'] === 'success' ? '✓' : '↻'}
               </span>
             </button>
@@ -874,7 +874,7 @@ export const App = () => {
               title="Pull changes from upstream"
               disabled={singleContextLocked || actionStatus['git/pull'] === 'running'}
             >
-              <span className={`button-icon ${actionStatus['git/pull'] === 'running' ? 'pull-animate' : ''}`}>↓</span>
+              <span className={`button-icon ${actionStatus['git/pull'] === 'running' ? 'wiggle' : ''}`}>↓</span>
               Pull
             </button>
             <button 
@@ -883,7 +883,7 @@ export const App = () => {
               title={isOptionPressed ? 'Force push changes (overwrites remote!)' : 'Push changes to upstream'}
               disabled={singleContextLocked || actionStatus['git/push'] === 'running'}
             >
-              <span className={`button-icon ${actionStatus['git/push'] === 'running' && !isOptionPressed ? 'push-animate' : ''}`}>↑</span>
+              <span className={`button-icon ${actionStatus['git/push'] === 'running' && !isOptionPressed ? 'wiggle' : ''}`}>↑</span>
               {isOptionPressed
                 ? (actionStatus['git/push'] === 'running' ? 'Force Pushing…' : 'Force Push')
                 : 'Push'}

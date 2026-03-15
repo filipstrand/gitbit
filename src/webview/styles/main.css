@@ -117,34 +117,10 @@ body {
   line-height: 1;
 }
 
-.button-icon.spin {
+.button-icon.wiggle {
   display: inline-block;
-  animation: cg-spin 0.9s linear infinite;
-}
-
-.button-icon.pull-animate {
-  display: inline-block;
-  animation: cg-pull 0.6s ease-in-out infinite;
-}
-
-.button-icon.push-animate {
-  display: inline-block;
-  animation: cg-push 0.6s ease-in-out infinite;
-}
-
-@keyframes cg-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes cg-pull {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(3px); }
-}
-
-@keyframes cg-push {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  transform-origin: 50% 50%;
+  animation: cgg-wiggle var(--wiggle-duration, 140ms) ease-in-out infinite alternate;
 }
 
 .toolbar-button.secondary.push-button.force-push {
