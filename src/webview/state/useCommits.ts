@@ -14,7 +14,7 @@ export function useCommits() {
   const [hasMore, setHasMore] = useState(true);
   const [nextSkip, setNextSkip] = useState(PAGE_SIZE);
   const [error, setError] = useState<string | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState<string>('--all');
+  const [selectedBranch, setSelectedBranch] = useState<string>('HEAD');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchScope, setSearchScope] = useState<SearchScope>('context');
   const [globalGroups, setGlobalGroups] = useState<GlobalSearchGroup[]>([]);

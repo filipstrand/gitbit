@@ -210,14 +210,14 @@ export const App = () => {
     (async () => {
       try {
         await request('repo/select', { root: selectedRepoRoot });
-        // Most repo switches should reset filter to All branches. For targeted global-commit jumps,
+        // Most repo switches should reset filter to HEAD. For targeted global-commit jumps,
         // we preserve an explicit filter branch set by the jump action.
         const override = repoSwitchFilterOverrideRef.current;
         if (override && override.repoRoot === selectedRepoRoot) {
-          setSelectedBranch(override.branch || '--all');
+          setSelectedBranch(override.branch || 'HEAD');
           repoSwitchFilterOverrideRef.current = null;
         } else {
-          setSelectedBranch('--all');
+          setSelectedBranch('HEAD');
         }
         refreshRef.current(true);
       } catch {
