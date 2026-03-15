@@ -508,6 +508,7 @@ body {
 }
 
 .branch-switcher .branch-selector-trigger {
+  padding-right: 6px;
   color: var(--vscode-gitDecoration-addedResourceForeground);
   border-color: rgba(78, 201, 176, 0.4);
 }
@@ -531,7 +532,7 @@ body {
 }
 
 .repo-switcher .branch-selector-trigger {
-  padding-right: 20px;
+  padding-right: 6px;
   color: color-mix(in srgb, var(--vscode-gitDecoration-modifiedResourceForeground) 42%, var(--vscode-foreground));
   border-color: rgba(204, 167, 0, 0.32);
 }
@@ -610,7 +611,7 @@ body {
 }
 
 .remote-switcher .branch-selector-trigger {
-  padding-right: 18px;
+  padding-right: 6px;
   color: var(--vscode-textLink-foreground);
   border-color: color-mix(in srgb, var(--vscode-textLink-foreground) 35%, transparent);
 }
