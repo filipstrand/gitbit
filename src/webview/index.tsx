@@ -967,7 +967,7 @@ export const App = () => {
                 ref={searchInputRef}
                 type="text" 
                 className="search-input" 
-                placeholder="Search message, hash, author..." 
+                placeholder="Search" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={(e) => e.target.select()}
