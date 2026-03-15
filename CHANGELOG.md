@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- Context menu: hide Go to GitHub when multiple commits are selected (Squash remains primary).
+
 ## 0.4.1
 
 - Toolbar: codicon chevrons for PULL/PUSH, separator after push, bold labels.

@@ -1213,20 +1213,11 @@ export const App = () => {
 
               // When multiple commits are selected, make Squash the primary action.
               if (isMultiContext && hasMulti) {
-                const rightClickedSha = contextMenu.sha;
                 return [
-                  {
-                    label: 'Go to GitHub…',
-                    iconImg: 'custom/github.svg',
-                    primary: true,
-                    onClick: async () => {
-                      const url = await request<string | null>('git/getGitHubCommitUrl', { sha: rightClickedSha });
-                      if (url) await request('env/openExternal', { url });
-                    }
-                  },
                   {
                     label: 'Squash…',
                     icon: 'codicon-combine',
+                    primary: true,
                     onClick: () => gitAction('git/squash', { shas: contextShas })
                   },
                   {
