@@ -434,13 +434,13 @@ body {
 
 .repo-switcher .branch-selector-trigger.repo-dirty {
   color: var(--vscode-gitDecoration-modifiedResourceForeground);
-  border-color: rgba(204, 167, 0, 0.45);
-  background-color: rgba(204, 167, 0, 0.1);
+  border-color: rgba(204, 167, 0, 0.85);
+  background-color: rgba(204, 167, 0, 0.35);
 }
 
 .repo-switcher .branch-selector-trigger.repo-dirty:hover {
   border-color: var(--vscode-gitDecoration-modifiedResourceForeground);
-  background-color: rgba(204, 167, 0, 0.16);
+  background-color: rgba(204, 167, 0, 0.45);
 }
 
 .repo-switcher .branch-item.repo-dirty {
@@ -449,11 +449,11 @@ body {
 
 .repo-switcher .branch-selector-trigger {
   padding-right: 32px;
-  background-color: rgba(204, 167, 0, 0.06);
+  background-color: rgba(204, 167, 0, 0.2);
 }
 
 .repo-switcher .branch-selector-trigger:hover {
-  background-color: rgba(204, 167, 0, 0.1);
+  background-color: rgba(204, 167, 0, 0.3);
 }
 
 .repo-selector-current-label {
