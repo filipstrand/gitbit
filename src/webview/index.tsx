@@ -858,32 +858,32 @@ export const App = () => {
         <div className="toolbar-left">
           <div className="toolbar-actions">
             <button 
-              className={`toolbar-button secondary icon-only ${actionStatus['git/fetch'] === 'success' ? 'action-success' : ''}`}
+              className={`toolbar-button secondary icon-only ${actionStatus['git/fetch'] === 'success' ? 'action-success' : ''} ${actionStatus['git/fetch'] === 'running' ? 'wiggle' : ''}`}
               onClick={() => gitAction('git/fetch', {})}
               title="Fetch all branches and refresh upstream status"
               aria-label="Fetch all branches and refresh upstream status"
               disabled={singleContextLocked || actionStatus['git/fetch'] === 'running'}
             >
-              <span className={`button-icon ${actionStatus['git/fetch'] === 'running' ? 'wiggle' : ''}`}>
+              <span className="button-icon">
                 {actionStatus['git/fetch'] === 'success' ? '✓' : '↻'}
               </span>
             </button>
             <button 
-              className={`toolbar-button secondary ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''}`}
+              className={`toolbar-button secondary ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''} ${actionStatus['git/pull'] === 'running' ? 'wiggle' : ''}`}
               onClick={() => gitAction('git/pull', {})}
               title="Pull changes from upstream"
               disabled={singleContextLocked || actionStatus['git/pull'] === 'running'}
             >
-              <span className={`button-icon ${actionStatus['git/pull'] === 'running' ? 'wiggle' : ''}`}>↓</span>
+              <span className="button-icon">↓</span>
               Pull
             </button>
             <button 
-              className={`toolbar-button secondary push-button ${isOptionPressed ? 'force-push' : ''} ${actionStatus['git/push'] === 'success' ? 'action-success' : ''}`} 
+              className={`toolbar-button secondary push-button ${isOptionPressed ? 'force-push' : ''} ${actionStatus['git/push'] === 'success' ? 'action-success' : ''} ${actionStatus['git/push'] === 'running' && !isOptionPressed ? 'wiggle' : ''}`} 
               onClick={() => gitAction('git/push', { force: isOptionPressed })}
               title={isOptionPressed ? 'Force push changes (overwrites remote!)' : 'Push changes to upstream'}
               disabled={singleContextLocked || actionStatus['git/push'] === 'running'}
             >
-              <span className={`button-icon ${actionStatus['git/push'] === 'running' && !isOptionPressed ? 'wiggle' : ''}`}>↑</span>
+              <span className="button-icon">↑</span>
               {isOptionPressed
                 ? (actionStatus['git/push'] === 'running' ? 'Force Pushing…' : 'Force Push')
                 : 'Push'}

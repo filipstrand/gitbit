@@ -117,10 +117,9 @@ body {
   line-height: 1;
 }
 
-.button-icon.wiggle {
-  display: inline-block;
+.toolbar-button.wiggle {
   transform-origin: 50% 50%;
-  animation: cgg-wiggle var(--wiggle-duration, 140ms) ease-in-out infinite alternate;
+  animation: cgg-wiggle-strong 80ms ease-in-out infinite alternate;
 }
 
 .toolbar-button.secondary.push-button.force-push {
@@ -911,6 +910,12 @@ body {
 @keyframes cgg-wiggle {
   from { transform: rotate(calc(-1 * var(--wiggle-amp, 0.18deg))) translateX(-0.2px); }
   to { transform: rotate(var(--wiggle-amp, 0.18deg)) translateX(0.2px); }
+}
+
+/** Stronger wiggle for toolbar buttons (fetch/pull/push when running) */
+@keyframes cgg-wiggle-strong {
+  from { transform: rotate(-4deg) translateX(-2.5px); }
+  to { transform: rotate(4deg) translateX(2.5px); }
 }
 
 .commit-drop-end {
