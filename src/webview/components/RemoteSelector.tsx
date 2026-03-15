@@ -16,7 +16,7 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
   onOpen,
   onAddRemote,
   onRemoveRemote,
-  label = 'Remotes:',
+  label = '',
   className = '',
   disabled = false
 }) => {

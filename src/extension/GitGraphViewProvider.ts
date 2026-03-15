@@ -635,8 +635,8 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               break;
             }
 
-            const limitPerRepo = Math.max(100, Number(message.payload?.limitPerRepo || 1200));
-            const maxMatchesPerRepo = Math.max(20, Number(message.payload?.maxMatchesPerRepo || 200));
+            const limitPerRepo = Math.max(100, Number(message.payload?.limitPerRepo || 5000));
+            const maxMatchesPerRepo = Math.max(20, Number(message.payload?.maxMatchesPerRepo || 500));
             const repos = await this._discoverRepos(false);
             const fallbackRoot = this._currentRepoRoot();
             if (fallbackRoot && !repos.some(r => r.root === fallbackRoot)) {
