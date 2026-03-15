@@ -879,8 +879,8 @@ export const App = () => {
               title="Pull changes from upstream"
               disabled={singleContextLocked || actionStatus['git/pull'] === 'running'}
             >
-              <span className="button-icon">↓</span>
-              Pull
+              <span className="button-icon codicon codicon-chevron-down" aria-hidden />
+              PULL
             </button>
             <button 
               className={`toolbar-button secondary push-button ${isOptionPressed ? 'force-push' : ''} ${actionStatus['git/push'] === 'success' ? 'action-success' : ''} ${actionStatus['git/push'] === 'running' && !isOptionPressed ? 'wiggle' : ''}`} 
@@ -888,13 +888,13 @@ export const App = () => {
               title={isOptionPressed ? 'Force push changes (overwrites remote!)' : 'Push changes to upstream'}
               disabled={singleContextLocked || actionStatus['git/push'] === 'running'}
             >
-              <span className="button-icon">↑</span>
+              <span className="button-icon codicon codicon-chevron-up" aria-hidden />
               {isOptionPressed
-                ? (actionStatus['git/push'] === 'running' ? 'Force Pushing…' : 'Force Push')
-                : 'Push'}
+                ? (actionStatus['git/push'] === 'running' ? 'FORCE PUSHING…' : 'FORCE PUSH')
+                : 'PUSH'}
             </button>
           </div>
-
+          <span className="toolbar-separator" aria-hidden>|</span>
           <RepoSelector
             label=""
             className="repo-switcher"

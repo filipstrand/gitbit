@@ -90,6 +90,8 @@ body {
 .toolbar-button.secondary.push-button {
   color: #f48771;
   border-color: rgba(244, 135, 113, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbar-button.secondary.push-button:hover {
@@ -123,9 +125,7 @@ body {
 }
 
 .toolbar-button.secondary.push-button.force-push {
-  white-space: nowrap;
   min-width: fit-content;
-  flex-shrink: 0;
 }
 
 .toolbar-button.action-success {
@@ -136,6 +136,15 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.toolbar-separator {
+  color: color-mix(in srgb, var(--vscode-foreground) 18%, transparent);
+  opacity: 0.35;
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
 }
 
 .branch-selector-container {
