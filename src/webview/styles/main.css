@@ -399,6 +399,38 @@ body {
   opacity: 1;
 }
 
+.branch-item-heart-toggle {
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.8;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.branch-item-heart-toggle .codicon {
+  font-size: 14px;
+}
+
+.branch-item-heart-toggle:hover {
+  opacity: 1;
+}
+
+.branch-item-heart-toggle.is-main .codicon {
+  color: #e91e8c;
+  opacity: 1;
+}
+
+.branch-item:hover .branch-item-heart-toggle:not(.is-main) .codicon,
+.branch-item.hovered .branch-item-heart-toggle:not(.is-main) .codicon {
+  color: #e91e8c;
+  opacity: 0.7;
+}
+
 .branch-item:hover .branch-item-star-toggle,
 .branch-item.hovered .branch-item-star-toggle,
 .branch-item.selected .branch-item-star-toggle {

@@ -128,6 +128,10 @@ export const App = () => {
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [remotes, setRemotes] = useState<RemoteInfo[]>([]);
   const [selectedRepoRoot, setSelectedRepoRoot] = useState<string>(() => initialWebviewState.selectedRepoRoot || '');
+  const [mainBranchesByRepo, setMainBranchesByRepo] = useState<Record<string, string>>(() => {
+    const s = initialWebviewState.mainBranchesByRepo;
+    return s && typeof s === 'object' ? { ...s } : {};
+  });
   const repoSwitchFilterOverrideRef = useRef<{ repoRoot: string; branch: string } | null>(null);
   const [contextPicker, setContextPicker] = useState<{
     selection: GlobalCommitSelection;
@@ -185,9 +189,10 @@ export const App = () => {
   useEffect(() => {
     vscode.setState?.({
       ...(vscode.getState?.() || {}),
-      selectedRepoRoot
+      selectedRepoRoot,
+      mainBranchesByRepo
     });
-  }, [selectedRepoRoot]);
+  }, [selectedRepoRoot, mainBranchesByRepo]);
 
   useEffect(() => {
     if (!selectedRepoRoot) return;
@@ -897,6 +902,7 @@ export const App = () => {
             selectedRoot={selectedRepoRoot}
             onSelect={setSelectedRepoRoot}
             onOpen={refreshRepos}
+            mainBranchesByRepo={mainBranchesByRepo}
             disabled={singleContextLocked}
           />
           <BranchSelector
@@ -908,6 +914,8 @@ export const App = () => {
             showAllOption={false}
             showHeadOption={false}
             enableHoverActions
+            mainBranch={mainBranchesByRepo[selectedRepoRoot] ?? 'main'}
+            onMainBranchChange={(branch) => setMainBranchesByRepo((prev) => ({ ...prev, [selectedRepoRoot]: branch }))}
             disabled={singleContextLocked}
             onHoverAction={(action, branch) => {
               if (action === 'checkout') {

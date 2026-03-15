@@ -18,6 +18,8 @@ interface BranchSelectorProps {
   enableHoverActions?: boolean;
   autoSizeTrigger?: boolean;
   onHoverAction?: (action: BranchHoverAction, branch: Branch) => void;
+  mainBranch?: string;
+  onMainBranchChange?: (branch: string) => void;
   disabled?: boolean;
 }
 
@@ -32,6 +34,8 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   enableHoverActions = false,
   autoSizeTrigger = false,
   onHoverAction,
+  mainBranch = 'main',
+  onMainBranchChange,
   disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -337,6 +341,20 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
                               }
                             }}
                           />
+                        )}
+                        {branch.name !== 'HEAD' && branch.name !== '--all' && onMainBranchChange && (
+                          <button
+                            className={`branch-item-heart-toggle ${branch.name === mainBranch ? 'is-main' : ''}`}
+                            title={branch.name === mainBranch ? 'Set as main branch (affects repo dropdown coloring)' : 'Set as main branch'}
+                            aria-label={branch.name === mainBranch ? `${branch.name} is main` : `Set ${branch.name} as main`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onMainBranchChange(branch.name);
+                            }}
+                          >
+                            <span className={`codicon ${branch.name === mainBranch ? 'codicon-heart-filled' : 'codicon-heart'}`} />
+                          </button>
                         )}
                         {branch.name !== 'HEAD' && branch.name !== '--all' && (
                           <button

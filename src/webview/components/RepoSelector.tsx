@@ -6,6 +6,7 @@ interface RepoSelectorProps {
   selectedRoot: string;
   onSelect: (root: string) => void;
   onOpen?: () => void;
+  mainBranchesByRepo?: Record<string, string>;
   label?: string;
   className?: string;
   disabled?: boolean;
@@ -16,6 +17,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
   selectedRoot,
   onSelect,
   onOpen,
+  mainBranchesByRepo,
   label = '',
   className = '',
   disabled = false
@@ -155,7 +157,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
                     <span className="repo-item-label" title={repo.label}>{repo.label}</span>
                     <span className="repo-item-sep">|</span>
                     <span
-                      className={`repo-item-branch ${(getBranch(repo) || '').toLowerCase() !== 'main' ? 'repo-item-branch-non-main' : ''}`}
+                      className={`repo-item-branch ${getBranch(repo) !== (mainBranchesByRepo?.[repo.root] ?? 'main') ? 'repo-item-branch-non-main' : ''}`}
                       title={getBranch(repo) || ''}
                     >
                       {getBranch(repo) || '—'}
