@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Go to GitHub… in commit context menu (single, multi-select, global search) with official GitHub icon.
+- Fetch/pull/push buttons: wiggle animation when running (whole button, subtle).
+- Branch filter: default to All branches on load and repo switch.
+
 ## 0.3.6
 
 - Toolbar: removed Repo, Branch, and Filter labels; dropdowns only.
