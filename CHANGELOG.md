@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.6
+
+- Toolbar: removed Repo, Branch, and Filter labels; dropdowns only.
+- Hash column: default width fits 8-char short SHA.
+- Version badge: discreet grey version number (e.g. v0.3.6) next to search box.
+- Repo button: yellow tint via text and border only (no background); subtle default, stronger when dirty.
+
 ## 0.3.5
 
 - Global search: increased scan limit (5000 commits per repo, 500 max matches) for deeper history.
