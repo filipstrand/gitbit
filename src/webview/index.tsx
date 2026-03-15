@@ -16,6 +16,26 @@ import { vscode, request } from './state/vscode';
 import { RepoInfo, Commit, GlobalCommitContextResponse, RemoteInfo } from '../extension/protocol/types';
 import './styles/main.css';
 
+/** Parse a remote URL (SSH or HTTPS) to a GitHub web base URL, or null if not GitHub-like. */
+function getGitHubCommitUrl(remotes: RemoteInfo[], sha: string): string | null {
+  const origin = remotes.find(r => r.name === 'origin') || remotes[0];
+  if (!origin?.url) return null;
+  const url = origin.url.trim();
+  // SSH: git@github.com:owner/repo.git or git@host:owner/repo
+  const sshMatch = url.match(/^git@([^:]+):([^/]+\/[^/]+?)(?:\.git)?$/);
+  if (sshMatch) {
+    const [, host, path] = sshMatch;
+    return `https://${host}/${path.replace(/\.git$/, '')}/commit/${sha}`;
+  }
+  // HTTPS: https://github.com/owner/repo.git or https://host/owner/repo
+  const httpsMatch = url.match(/^https?:\/\/([^/]+)\/([^/]+\/[^/]+?)(?:\.git)?\/?$/);
+  if (httpsMatch) {
+    const [, host, path] = httpsMatch;
+    return `https://${host}/${path.replace(/\.git$/, '')}/commit/${sha}`;
+  }
+  return null;
+}
+
 interface GlobalCommitSelection {
   repoRoot: string;
   repoLabel: string;
@@ -1251,7 +1271,14 @@ export const App = () => {
               const tagNames: string[] = (singleCommit?.refs || [])
                 .filter((r: any) => r?.type === 'tag' && typeof r?.name === 'string' && r.name.length > 0)
                 .map((r: any) => String(r.name));
+              const githubUrl = getGitHubCommitUrl(remotes, singleSha);
               return [
+                ...(githubUrl ? [{
+                  label: 'Go to GitHub…',
+                  icon: 'codicon-link-external',
+                  primary: true,
+                  onClick: () => request('env/openExternal', { url: githubUrl })
+                }, { separator: true }] : []),
                 {
                   label: 'Rename',
                   icon: 'codicon-edit',

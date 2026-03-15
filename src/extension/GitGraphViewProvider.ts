@@ -560,6 +560,20 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
             this._sendResponse(message.requestId, 'ok');
             break;
           }
+          case 'env/openExternal': {
+            const url = String(message.payload?.url || '').trim();
+            if (!url || !url.startsWith('https://') && !url.startsWith('http://')) {
+              this._sendError(message.requestId, 'Invalid URL for openExternal');
+              break;
+            }
+            try {
+              await vscode.env.openExternal(vscode.Uri.parse(url));
+              this._sendResponse(message.requestId, 'ok');
+            } catch (err) {
+              this._sendError(message.requestId, 'Failed to open URL', (err as Error)?.message);
+            }
+            break;
+          }
           case 'repos/list': {
             const force = !!message.payload?.force;
             const base = await this._discoverRepos(force);
