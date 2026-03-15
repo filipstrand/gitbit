@@ -87,6 +87,11 @@ body {
   background-color: var(--vscode-toolbar-hoverBackground);
 }
 
+.toolbar-button.secondary.pull-button,
+.toolbar-button.secondary.push-button {
+  font-weight: bold;
+}
+
 .toolbar-button.secondary.push-button {
   color: #f48771;
   border-color: rgba(244, 135, 113, 0.4);

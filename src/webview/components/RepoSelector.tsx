@@ -95,7 +95,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
               title="Upstream has newer commits"
               aria-label="Upstream has newer commits"
             >
-              <span className="codicon codicon-arrow-down" />
+              <span className="codicon codicon-chevron-down" />
             </span>
           )}
         </span>
@@ -124,7 +124,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
             title="Upstream has newer commits"
             aria-label="Upstream has newer commits"
           >
-            <span className="codicon codicon-arrow-down" />
+            <span className="codicon codicon-chevron-down" />
           </span>
         )}
         <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
@@ -170,7 +170,7 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
                       title="Upstream has newer commits"
                       aria-label="Upstream has newer commits"
                     >
-                      <span className="codicon codicon-arrow-down" />
+                      <span className="codicon codicon-chevron-down" />
                     </span>
                   )}
                 </div>

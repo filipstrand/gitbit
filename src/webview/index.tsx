@@ -874,7 +874,7 @@ export const App = () => {
               </span>
             </button>
             <button 
-              className={`toolbar-button secondary ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''} ${actionStatus['git/pull'] === 'running' ? 'wiggle' : ''}`}
+              className={`toolbar-button secondary pull-button ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''} ${actionStatus['git/pull'] === 'running' ? 'wiggle' : ''}`}
               onClick={() => gitAction('git/pull', {})}
               title="Pull changes from upstream"
               disabled={singleContextLocked || actionStatus['git/pull'] === 'running'}
