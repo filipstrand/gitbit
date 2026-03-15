@@ -186,6 +186,17 @@ export const App = () => {
     refreshRepos();
   }, [hasUncommitted, refreshRepos]);
 
+  // Refresh repos (including hasUpstreamUpdates) after pull, fetch, push, etc.
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'event/repoChanged') {
+        refreshRepos(true);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [refreshRepos]);
+
   useEffect(() => {
     vscode.setState?.({
       ...(vscode.getState?.() || {}),
@@ -959,6 +970,7 @@ export const App = () => {
                 placeholder="Search message, hash, author..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={(e) => e.target.select()}
               />
               {searchQuery && (
                 <span className="search-clear" onClick={() => setSearchQuery('')}>&times;</span>

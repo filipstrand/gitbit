@@ -62,18 +62,20 @@ body {
   color: var(--vscode-button-foreground);
   background-color: var(--vscode-button-background);
   cursor: pointer;
-  padding: 2px 8px;
+  padding: 0 8px;
+  height: 20px;
   border-radius: 2px;
   font-size: 11px;
   display: flex;
   align-items: center;
   gap: 4px;
+  box-sizing: border-box;
 }
 
 .toolbar-button.icon-only {
   width: 24px;
+  padding: 0;
   justify-content: center;
-  padding: 2px 0;
   gap: 0;
 }
 
@@ -120,7 +122,7 @@ body {
 }
 
 .button-icon {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
 }
 
@@ -169,13 +171,15 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  height: 20px;
+  box-sizing: border-box;
   background-color: var(--vscode-dropdown-background);
   color: var(--vscode-dropdown-foreground);
   border: 1px solid var(--vscode-dropdown-border);
-  padding: 1px 8px 1px 8px;
+  padding: 0 8px;
   font-family: inherit;
   font-size: 11px;
-  line-height: inherit;
+  line-height: 1;
   border-radius: 2px;
   cursor: pointer;
   min-width: 0;
@@ -606,22 +610,36 @@ body {
   font-weight: 600;
 }
 
-.repo-upstream-indicator {
-  margin-left: auto;
-  margin-right: 12px;
-  opacity: 0.85;
-  color: var(--vscode-gitDecoration-untrackedResourceForeground, var(--vscode-charts-blue));
-  flex: 0 0 auto;
+/* Fixed-width slot for upstream indicator; always reserved to preserve symmetry */
+.repo-upstream-slot {
+  flex-shrink: 0;
+  width: 14px;
+  min-width: 14px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
 }
 
-.repo-upstream-indicator .codicon {
-  font-size: 12px;
+.repo-upstream-slot.has-updates .codicon {
+  color: var(--vscode-gitDecoration-untrackedResourceForeground, var(--vscode-charts-blue));
+  opacity: 0.85;
+}
+
+/* Repo dropdown uses dot instead of chevron */
+.repo-switcher .branch-selector-arrow.repo-selector-dot {
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.7;
 }
 
 .repo-switcher .branch-selector-popup {
   width: 420px;
+}
+
+.repo-switcher .branch-list .branch-item.repo-item {
+  padding-left: 12px;
 }
 
 .remote-switcher .branch-selector-trigger {
@@ -776,13 +794,19 @@ body {
   outline: none;
   height: 20px;
   box-sizing: border-box;
-  width: 140px;
-  min-width: 120px;
-  max-width: 240px;
+  width: 175px;
+  min-width: 150px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-input:focus {
   border-color: var(--vscode-focusBorder);
+  /* Keep ellipsis when focused so truncated text still shows ... */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-clear {

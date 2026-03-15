@@ -69,8 +69,9 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
 
   const selectedRepoHasUpstreamUpdates = useMemo(() => {
     if (repos.length === 1) return !!repos[0].hasUpstreamUpdates;
-    return !!repos.find(r => r.root === selectedRoot)?.hasUpstreamUpdates;
-  }, [repos, selectedRoot]);
+    /* Multi-repo: show indicator if any repo has upstream updates, until all are synced */
+    return repos.some(r => r.hasUpstreamUpdates);
+  }, [repos]);
 
   const filteredRepos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -79,7 +80,20 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
     return repos.filter(r => formatRepoLabelForSearch(r).toLowerCase().includes(q));
   }, [repos, searchQuery]);
 
+  const upstreamSlot = (
+    <span
+      className={`repo-upstream-slot ${selectedRepoHasUpstreamUpdates ? 'has-updates' : ''}`}
+      title={selectedRepoHasUpstreamUpdates ? 'Upstream has newer commits' : undefined}
+      aria-label={selectedRepoHasUpstreamUpdates ? 'Upstream has newer commits' : undefined}
+    >
+      {selectedRepoHasUpstreamUpdates && (
+        <span className="codicon codicon-chevron-down" aria-hidden />
+      )}
+    </span>
+  );
+
   // If there's exactly one repo, don't show a dropdown — just display the repo name.
+  // Only show upstream slot when there are updates (no empty space when synced).
   if (repos.length === 1) {
     return (
       <div className={`branch-selector-container ${className} ${disabled ? 'is-disabled' : ''}`} ref={containerRef}>
@@ -88,16 +102,8 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
           className={`branch-selector-trigger repo-selector-static ${selectedRepoIsDirty ? 'repo-dirty' : ''}`}
           title={repos[0].root}
         >
+          {selectedRepoHasUpstreamUpdates && upstreamSlot}
           <span className="repo-selector-current-label">{currentLabel}</span>
-          {selectedRepoHasUpstreamUpdates && (
-            <span
-              className="repo-upstream-indicator"
-              title="Upstream has newer commits"
-              aria-label="Upstream has newer commits"
-            >
-              <span className="codicon codicon-chevron-down" />
-            </span>
-          )}
         </span>
       </div>
     );
@@ -117,17 +123,9 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
         title={selectedRoot || ''}
         disabled={disabled || repos.length === 0}
       >
+        {upstreamSlot}
         <span className="repo-selector-current-label">{currentLabel}</span>
-        {selectedRepoHasUpstreamUpdates && (
-          <span
-            className="repo-upstream-indicator"
-            title="Upstream has newer commits"
-            aria-label="Upstream has newer commits"
-          >
-            <span className="codicon codicon-chevron-down" />
-          </span>
-        )}
-        <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
+        <span className="branch-selector-arrow repo-selector-dot codicon codicon-circle-small-filled" aria-hidden />
       </button>
 
       {isOpen && (
@@ -147,13 +145,18 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
               {filteredRepos.map(repo => (
                 <div
                   key={repo.root}
-                  className={`branch-item ${repo.root === selectedRoot ? 'selected' : ''} ${repo.hasUncommittedChanges ? 'repo-dirty' : ''}`}
+                  className={`branch-item repo-item ${repo.root === selectedRoot ? 'selected' : ''} ${repo.hasUncommittedChanges ? 'repo-dirty' : ''}`}
                   title={repo.root}
                   onClick={() => {
                     onSelect(repo.root);
                     setIsOpen(false);
                   }}
                 >
+                  <span className={`repo-upstream-slot ${repo.hasUpstreamUpdates ? 'has-updates' : ''}`} title={repo.hasUpstreamUpdates ? 'Upstream has newer commits' : undefined}>
+                    {repo.hasUpstreamUpdates && (
+                      <span className="codicon codicon-chevron-down" aria-hidden />
+                    )}
+                  </span>
                   <span className="repo-item-main">
                     <span className="repo-item-label" title={repo.label}>{repo.label}</span>
                     <span className="repo-item-sep">|</span>
@@ -164,15 +167,6 @@ export const RepoSelector: React.FC<RepoSelectorProps> = ({
                       {getBranch(repo) || '—'}
                     </span>
                   </span>
-                  {repo.hasUpstreamUpdates && (
-                    <span
-                      className="repo-upstream-indicator"
-                      title="Upstream has newer commits"
-                      aria-label="Upstream has newer commits"
-                    >
-                      <span className="codicon codicon-chevron-down" />
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
