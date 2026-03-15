@@ -387,7 +387,6 @@ body {
   font-size: 12px;
   line-height: 1;
   padding: 0;
-  margin-right: 14px; /* keep room for hover flyout chevron */
 }
 
 .branch-item-star-toggle:hover {
@@ -409,6 +408,14 @@ body {
 .branch-item.hovered .branch-item-star-toggle.is-favorite,
 .branch-item.selected .branch-item-star-toggle.is-favorite {
   color: #f2c84b;
+}
+
+.branch-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-right: 14px; /* keep room for hover flyout chevron */
 }
 
 .branch-item-copy {

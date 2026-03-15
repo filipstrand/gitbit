@@ -317,27 +317,28 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
                         <span className="branch-item-active-indicator">●</span>
                       )}
                       <span className="branch-item-name">{branch.label || branch.name.replace('remotes/', '')}</span>
-                      <span
-                        className="branch-item-copy codicon codicon-copy"
-                        title="Copy branch name"
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          vscode.postMessage({ type: 'app/copyToClipboard', payload: { text: branch.name } });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
+                      <div className="branch-item-actions">
+                        <span
+                          className="branch-item-copy codicon codicon-copy"
+                          title="Copy branch name"
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             vscode.postMessage({ type: 'app/copyToClipboard', payload: { text: branch.name } });
-                          }
-                        }}
-                      />
-                      {branch.name !== 'HEAD' && branch.name !== '--all' && (
-                        <button
-                          className={`branch-item-star-toggle ${branch.isFavorite ? 'is-favorite' : ''}`}
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              vscode.postMessage({ type: 'app/copyToClipboard', payload: { text: branch.name } });
+                            }
+                          }}
+                        />
+                        {branch.name !== 'HEAD' && branch.name !== '--all' && (
+                          <button
+                            className={`branch-item-star-toggle ${branch.isFavorite ? 'is-favorite' : ''}`}
                           title={branch.isFavorite ? 'Remove from important' : 'Add to important'}
                           aria-label={branch.isFavorite ? `Unstar ${branch.name}` : `Star ${branch.name}`}
                           onClick={(e) => {
@@ -357,6 +358,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
                           {branch.isFavorite ? '★' : '☆'}
                         </button>
                       )}
+                    </div>
                     </div>
                   ))}
                 </React.Fragment>
