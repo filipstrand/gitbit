@@ -863,24 +863,23 @@ export const App = () => {
               </span>
             </button>
             <button 
-              className={`toolbar-button secondary ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''}`}
+              className={`toolbar-button secondary icon-only ${actionStatus['git/pull'] === 'success' ? 'action-success' : ''}`}
               onClick={() => gitAction('git/pull', {})}
               title="Pull changes from upstream"
               disabled={singleContextLocked || actionStatus['git/pull'] === 'running'}
             >
-              <span className="button-icon">↓</span>
-              {actionStatus['git/pull'] === 'running' ? 'Pulling…' : 'Pull'}
+              <span className={`button-icon ${actionStatus['git/pull'] === 'running' ? 'pull-animate' : ''}`}>↓</span>
             </button>
             <button 
-              className={`toolbar-button secondary push-button ${isOptionPressed ? 'force-push' : ''} ${actionStatus['git/push'] === 'success' ? 'action-success' : ''}`} 
+              className={`toolbar-button secondary push-button ${isOptionPressed ? 'force-push' : 'icon-only'} ${actionStatus['git/push'] === 'success' ? 'action-success' : ''}`} 
               onClick={() => gitAction('git/push', { force: isOptionPressed })}
               title={isOptionPressed ? 'Force push changes (overwrites remote!)' : 'Push changes to upstream'}
               disabled={singleContextLocked || actionStatus['git/push'] === 'running'}
             >
-              <span className="button-icon">↑</span>
-              {actionStatus['git/push'] === 'running'
-                ? (isOptionPressed ? 'Force Pushing…' : 'Pushing…')
-                : (isOptionPressed ? 'Force Push' : 'Push')}
+              <span className={`button-icon ${actionStatus['git/push'] === 'running' && !isOptionPressed ? 'push-animate' : ''}`}>↑</span>
+              {isOptionPressed && (
+                actionStatus['git/push'] === 'running' ? 'Force Pushing…' : 'Force Push'
+              )}
             </button>
           </div>
 

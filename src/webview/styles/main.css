@@ -122,9 +122,35 @@ body {
   animation: cg-spin 0.9s linear infinite;
 }
 
+.button-icon.pull-animate {
+  display: inline-block;
+  animation: cg-pull 0.6s ease-in-out infinite;
+}
+
+.button-icon.push-animate {
+  display: inline-block;
+  animation: cg-push 0.6s ease-in-out infinite;
+}
+
 @keyframes cg-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes cg-pull {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+@keyframes cg-push {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.toolbar-button.secondary.push-button.force-push {
+  white-space: nowrap;
+  min-width: fit-content;
+  flex-shrink: 0;
 }
 
 .toolbar-button.action-success {
