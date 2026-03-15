@@ -811,15 +811,18 @@ body {
 
 .search-scope-inline {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 20px;
-  min-width: 44px;
+  min-width: 28px;
   border: 1px solid var(--vscode-input-border);
   border-radius: 0 2px 2px 0;
   background: transparent;
   color: var(--vscode-descriptionForeground);
-  padding: 0 5px;
-  font-size: 10px;
-  line-height: 18px;
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
   box-sizing: border-box;
 }

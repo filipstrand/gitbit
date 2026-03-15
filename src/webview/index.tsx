@@ -972,8 +972,9 @@ export const App = () => {
                   ? 'Global search is enabled (click for current context only)'
                   : 'Current context search (click to search globally)'
               }
+              aria-label={searchScope === 'global' ? 'Global search (click for current context)' : 'Current context search (click for global)'}
             >
-              {searchScope === 'global' ? 'Global' : 'Here'}
+              <span className={`codicon ${searchScope === 'global' ? 'codicon-globe' : 'codicon-home'}`} aria-hidden />
             </button>
             <span className="version-badge" title="GitBit version">
               v{(typeof (window as any).gitbitVersion === 'string' ? (window as any).gitbitVersion : '0.0.0')}
