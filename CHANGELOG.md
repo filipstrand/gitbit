@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3
+
+- Search box: placeholder simplified to "Search".
+- Toolbar: consistent 20px height across selectors and buttons.
+- Repo selector: upstream indicator left-aligned with dedicated slot, dot for dropdown, refresh repos on pull.
+
 ## 0.4.2
 
 - Context menu: hide Go to GitHub when multiple commits are selected (Squash remains primary).
