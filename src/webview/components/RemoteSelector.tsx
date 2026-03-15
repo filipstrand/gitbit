@@ -64,26 +64,32 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
                   setIsOpen(false);
                 }}
               >
-                + Add new remote
+                <span className="remote-add-icon">+</span> Add new remote
               </button>
               {remotes.length === 0 ? (
                 <div className="remote-empty">No remotes configured</div>
               ) : (
                 remotes.map((remote) => (
                   <div key={remote.name} className="remote-item" title={`${remote.name}\n${remote.url}`}>
-                    <button
-                      className="remote-remove-btn"
-                      title={`Remove ${remote.name}`}
-                      aria-label={`Remove ${remote.name}`}
-                      onClick={() => onRemoveRemote(remote.name)}
-                    >
-                      ×
-                    </button>
                     <div className="remote-line">
                       <span className="remote-name">{remote.name}</span>
                       <span className="remote-sep">|</span>
                       <span className="remote-url">{remote.url}</span>
                     </div>
+                    <span
+                      className="remote-remove-btn codicon codicon-close"
+                      role="button"
+                      tabIndex={0}
+                      title={`Remove ${remote.name}`}
+                      aria-label={`Remove ${remote.name}`}
+                      onClick={() => onRemoveRemote(remote.name)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onRemoveRemote(remote.name);
+                        }
+                      }}
+                    />
                   </div>
                 ))
               )}

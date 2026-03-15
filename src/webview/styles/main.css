@@ -555,11 +555,11 @@ body {
 }
 
 .remote-line {
+  flex: 1;
   min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
 }
 
 .remote-name {
@@ -589,22 +589,33 @@ body {
 }
 
 .remote-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: var(--vscode-errorForeground);
   cursor: pointer;
   font-size: 14px;
-  line-height: 1;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
   opacity: 0.75;
-  border-radius: 3px;
-  flex: 0 0 auto;
+  border-radius: 4px;
+  padding: 2px;
+  margin: -2px;
+  flex-shrink: 0;
+  transition: background-color 90ms ease, box-shadow 90ms ease, opacity 90ms ease;
 }
 
 .remote-remove-btn:hover {
   opacity: 1;
-  background: color-mix(in srgb, var(--vscode-errorForeground) 18%, transparent);
+  background-color: color-mix(in srgb, var(--vscode-errorForeground) 18%, transparent);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder, rgba(255, 255, 255, 0.25)) inset;
+}
+
+.remote-add-icon {
+  margin-right: 6px;
 }
 
 .remote-add-row {
@@ -617,6 +628,8 @@ body {
   padding: 8px 10px;
   font-size: 12px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .remote-add-row:hover {
