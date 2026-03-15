@@ -318,24 +318,26 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
                       )}
                       <span className="branch-item-name">{branch.label || branch.name.replace('remotes/', '')}</span>
                       <div className="branch-item-actions">
-                        <span
-                          className="branch-item-copy codicon codicon-copy"
-                          title="Copy branch name"
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            vscode.postMessage({ type: 'app/copyToClipboard', payload: { text: branch.name } });
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
+                        {branch.name !== 'HEAD' && branch.name !== '--all' && (
+                          <span
+                            className="branch-item-copy codicon codicon-copy"
+                            title="Copy branch name"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               vscode.postMessage({ type: 'app/copyToClipboard', payload: { text: branch.name } });
-                            }
-                          }}
-                        />
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                vscode.postMessage({ type: 'app/copyToClipboard', payload: { text: branch.name } });
+                              }
+                            }}
+                          />
+                        )}
                         {branch.name !== 'HEAD' && branch.name !== '--all' && (
                           <button
                             className={`branch-item-star-toggle ${branch.isFavorite ? 'is-favorite' : ''}`}
