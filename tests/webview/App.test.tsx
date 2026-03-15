@@ -236,7 +236,7 @@ describe('App', () => {
   it('opens remotes dropdown and dispatches add remote action', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remotes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'REMOTES' }));
     fireEvent.click(screen.getByRole('button', { name: /\+ Add new remote/i }));
 
     await waitFor(() => {
@@ -259,7 +259,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Remotes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'REMOTES' }));
     const removeButton = await screen.findByRole('button', { name: 'Remove origin' });
     fireEvent.click(removeButton);
 

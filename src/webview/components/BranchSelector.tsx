@@ -157,7 +157,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
 
     const fixedImportant: BranchListItem[] = [
       ...(showHeadOption ? [{ name: 'HEAD', remote: false, current: false, type: 'important' as const, label: headLabel, fixedImportant: true }] : []),
-      ...(showAllOption ? [{ name: '--all', remote: false, current: false, type: 'important' as const, label: 'All Branches', fixedImportant: true }] : []),
+      ...(showAllOption ? [{ name: '--all', remote: false, current: false, type: 'important' as const, label: 'ALL BRANCHES', fixedImportant: true }] : []),
     ];
 
     const importantFromFavorites: BranchListItem[] = branches
@@ -206,7 +206,7 @@ export const BranchSelector: React.FC<BranchSelectorProps> = ({
   };
 
   const currentLabel = selectedBranch === '--all' 
-    ? 'All Branches' 
+    ? 'ALL BRANCHES' 
     : (selectedBranch === 'HEAD' && currentBranchName ? `HEAD (${currentBranchName})` : selectedBranch);
 
   // Optional: shrink the trigger to match the selected label (RepoSelector-style measuring).

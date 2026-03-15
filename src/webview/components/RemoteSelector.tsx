@@ -62,7 +62,7 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
         title="Show configured remotes"
         aria-disabled={disabled}
       >
-        <span className="branch-selector-trigger-text">Remotes</span>
+        <span className="branch-selector-trigger-text">REMOTES</span>
         <span className="branch-selector-arrow codicon codicon-chevron-down" aria-hidden />
       </div>
       {isOpen && !disabled && (
@@ -89,7 +89,7 @@ export const RemoteSelector: React.FC<RemoteSelectorProps> = ({
                       <span className="remote-url">{remote.url}</span>
                     </div>
                     <span
-                      className="remote-remove-btn codicon codicon-close"
+                      className="remote-remove-btn codicon codicon-trash"
                       role="button"
                       tabIndex={0}
                       title={`Remove ${remote.name}`}
