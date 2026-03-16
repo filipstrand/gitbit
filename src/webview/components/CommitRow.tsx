@@ -6,6 +6,7 @@ import { GraphCommit, GraphLayout } from '../state/GraphLayout';
 
 interface CommitRowProps {
   commit: GraphCommit;
+  remoteTagNameSet?: Set<string>;
   isSelected: boolean;
   onSelect: (sha: string, isMulti: boolean, isShift: boolean) => void;
   onContextMenu: (sha: string, x: number, y: number) => void;
@@ -32,6 +33,7 @@ interface CommitRowProps {
 
 export const CommitRow: React.FC<CommitRowProps> = ({
   commit,
+  remoteTagNameSet,
   isSelected,
   onSelect,
   onContextMenu,
@@ -252,7 +254,10 @@ export const CommitRow: React.FC<CommitRowProps> = ({
       <div className="cell cell-subject" title={commit.subject}>
         <div className="subject-text">
           {commit.refs && commit.refs.map((ref, i) => (
-            <span key={i} className={`ref-badge ref-${ref.type}`}>
+            <span
+              key={i}
+              className={`ref-badge ref-${ref.type} ${ref.type === 'tag' && remoteTagNameSet && !remoteTagNameSet.has(ref.name) ? 'ref-tag-local' : ''}`.trim()}
+            >
               {ref.name}
             </span>
           ))}

@@ -784,6 +784,32 @@ export class GitGraphViewProvider implements vscode.WebviewViewProvider {
               this._sendError(message.requestId, 'Failed to fetch branches');
             }
             break;
+          case 'tags/remoteList': {
+            if (!this._gitRunner) {
+              await this._resolveRepo();
+            }
+            if (!this._gitRunner) {
+              this._sendResponse(message.requestId, []);
+              break;
+            }
+            const remote = String(message.payload?.remote || 'origin').trim() || 'origin';
+            const tagsRes = await this._gitRunner.run(['ls-remote', '--tags', '--refs', remote], 60000);
+            if (tagsRes.exitCode !== 0) {
+              // Keep the UI responsive even when remotes are unavailable.
+              this._sendResponse(message.requestId, []);
+              break;
+            }
+            const tags = tagsRes.stdout
+              .split('\n')
+              .map(line => line.trim())
+              .filter(Boolean)
+              .map(line => line.split('\t')[1] || '')
+              .filter(ref => ref.startsWith('refs/tags/'))
+              .map(ref => ref.substring('refs/tags/'.length))
+              .filter(Boolean);
+            this._sendResponse(message.requestId, Array.from(new Set(tags)));
+            break;
+          }
           case 'commit/details':
             {
               const requestedRepoRoot = typeof message.payload?.repoRoot === 'string'

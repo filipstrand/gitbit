@@ -43,6 +43,7 @@ export const App = () => {
     globalLoading,
     globalTotalMatches,
     globalScannedRepos,
+    remoteTagNameSet,
     refresh,
     loadMore
   } = useCommits();
@@ -1106,6 +1107,7 @@ export const App = () => {
                         <CommitRow
                           key={commit.sha}
                           commit={commit}
+                          remoteTagNameSet={remoteTagNameSet}
                           isSelected={selectedShas.includes(commit.sha)}
                           onSelect={handleSelect}
                           onContextMenu={handleContextMenu}

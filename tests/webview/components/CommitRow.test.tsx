@@ -114,4 +114,22 @@ describe('CommitRow', () => {
     fireEvent.click(screen.getByTitle('Open this commit in repo context'));
     expect(onSelectedAction).toHaveBeenCalled();
   });
+
+  it('renders local-only tag with muted class', () => {
+    const { container } = render(
+      <CommitRow
+        commit={commit({
+          refs: [{ name: 'v2.0.0', type: 'tag' }]
+        })}
+        remoteTagNameSet={new Set(['v1.0.0'])}
+        isSelected={false}
+        onSelect={() => {}}
+        onContextMenu={() => {}}
+      />
+    );
+
+    const tag = container.querySelector('.ref-badge.ref-tag');
+    expect(tag).toBeTruthy();
+    expect(tag?.classList.contains('ref-tag-local')).toBe(true);
+  });
 });

@@ -15,6 +15,9 @@ describe('useCommits', () => {
       if (type === 'branches/list') {
         return [{ name: 'main', remote: false, current: true }];
       }
+      if (type === 'tags/remoteList') {
+        return ['v1.0.0'];
+      }
       if (type === 'commits/list') {
         return [
           {
@@ -117,6 +120,55 @@ describe('useCommits', () => {
     await new Promise(resolve => setTimeout(resolve, 260));
 
     expect(mockRequest).toHaveBeenCalledWith('branches/list');
+    expect(mockRequest).toHaveBeenCalledWith('tags/remoteList', { remote: 'origin' });
     expect(mockRequest).toHaveBeenCalledWith('commits/list', { limit: 500, branch: 'HEAD' });
+  });
+
+  it('matches tags with fuzzy search', async () => {
+    mockRequest.mockImplementation(async (type: string) => {
+      if (type === 'branches/list') {
+        return [{ name: 'main', remote: false, current: true }];
+      }
+      if (type === 'tags/remoteList') {
+        return ['v1.2.3'];
+      }
+      if (type === 'commits/list') {
+        return [
+          {
+            sha: 'tagged1',
+            parents: [],
+            authorName: 'Filip',
+            authorEmail: 'filip@example.com',
+            authorDateIso: '2026-03-12T00:00:00Z',
+            subject: 'Release commit',
+            decorations: '',
+            refs: [{ name: 'v1.2.3', type: 'tag' }]
+          },
+          {
+            sha: 'other1',
+            parents: [],
+            authorName: 'Filip',
+            authorEmail: 'filip@example.com',
+            authorDateIso: '2026-03-12T00:00:00Z',
+            subject: 'Other commit',
+            decorations: '',
+            refs: []
+          }
+        ];
+      }
+      return [];
+    });
+
+    const { result } = renderHook(() => useCommits());
+    await waitFor(() => expect(result.current.commits.some(c => c.sha === 'tagged1')).toBe(true));
+
+    act(() => {
+      result.current.setSearchQuery('v123');
+    });
+
+    await waitFor(() => {
+      expect(result.current.commits).toHaveLength(1);
+      expect(result.current.commits[0].sha).toBe('tagged1');
+    });
   });
 });

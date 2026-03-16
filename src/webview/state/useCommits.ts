@@ -6,6 +6,18 @@ import { GraphLayout, GraphCommit } from './GraphLayout';
 const PAGE_SIZE = 500;
 type SearchScope = 'context' | 'global';
 
+const normalizeForFuzzy = (value: string): string =>
+  value.toLowerCase().replace(/[\s._/\-]+/g, '');
+
+const isFuzzySubsequence = (needle: string, haystack: string): boolean => {
+  if (!needle) return true;
+  let i = 0;
+  for (let j = 0; j < haystack.length && i < needle.length; j++) {
+    if (haystack[j] === needle[i]) i++;
+  }
+  return i === needle.length;
+};
+
 export function useCommits() {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -17,6 +29,7 @@ export function useCommits() {
   const [selectedBranch, setSelectedBranch] = useState<string>('HEAD');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchScope, setSearchScope] = useState<SearchScope>('context');
+  const [remoteTagNames, setRemoteTagNames] = useState<string[]>([]);
   const [globalGroups, setGlobalGroups] = useState<GlobalSearchGroup[]>([]);
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalTotalMatches, setGlobalTotalMatches] = useState(0);
@@ -30,14 +43,22 @@ export function useCommits() {
   const filteredCommits = useMemo(() => {
     if (!searchQuery) return commits;
     const query = searchQuery.toLowerCase();
+    const fuzzyNeedle = normalizeForFuzzy(searchQuery);
     return commits.filter(c => 
       c.subject.toLowerCase().includes(query) || 
       c.sha.toLowerCase().includes(query) ||
       c.authorName.toLowerCase().includes(query) ||
       c.authorEmail.toLowerCase().includes(query) ||
-      (c as any).message?.toLowerCase().includes(query)
+      (c as any).message?.toLowerCase().includes(query) ||
+      (c.refs || []).some(ref => {
+        if (ref.type !== 'tag') return false;
+        if (ref.name.toLowerCase().includes(query)) return true;
+        return isFuzzySubsequence(fuzzyNeedle, normalizeForFuzzy(ref.name));
+      })
     );
   }, [commits, searchQuery]);
+
+  const remoteTagNameSet = useMemo(() => new Set(remoteTagNames), [remoteTagNames]);
 
   const graphCommits = useMemo(() => GraphLayout.compute(filteredCommits), [filteredCommits]);
 
@@ -63,6 +84,15 @@ export function useCommits() {
       console.error('Failed to fetch branches', err);
     }
   }, []); // No dependency on selectedBranch
+
+  const fetchRemoteTags = useCallback(async () => {
+    try {
+      const data = await request<string[]>('tags/remoteList', { remote: 'origin' });
+      setRemoteTagNames(Array.isArray(data) ? data.filter(Boolean) : []);
+    } catch {
+      setRemoteTagNames([]);
+    }
+  }, []);
 
   const fetchCommits = useCallback(async (options?: {
     limit?: number;
@@ -106,14 +136,16 @@ export function useCommits() {
 
   const refresh = useCallback((silent = false) => {
     fetchBranches();
+    fetchRemoteTags();
     setHasMore(true);
     setNextSkip(PAGE_SIZE);
     fetchCommits({ limit: PAGE_SIZE, skip: 0, silent, append: false });
-  }, [fetchBranches, fetchCommits]);
+  }, [fetchBranches, fetchCommits, fetchRemoteTags]);
 
   useEffect(() => {
     fetchBranches();
-  }, [fetchBranches]);
+    fetchRemoteTags();
+  }, [fetchBranches, fetchRemoteTags]);
 
   useEffect(() => {
     if (!isGlobalSearchActive) {
@@ -195,6 +227,7 @@ export function useCommits() {
     globalLoading,
     globalTotalMatches,
     globalScannedRepos,
+    remoteTagNameSet,
     refresh,
     loadMore
   };

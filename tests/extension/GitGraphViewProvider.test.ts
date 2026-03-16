@@ -122,6 +122,26 @@ describe('GitGraphViewProvider message handling', () => {
     expect(posted[posted.length - 1]).toEqual({ type: 'ok', requestId: 'p1', data: 'ok' });
   });
 
+  it('returns remote tag names for tags/remoteList', async () => {
+    const { provider, posted, webviewView, getReceiver } = setupHarness();
+    const run = vi.fn().mockResolvedValue({
+      exitCode: 0,
+      stdout: 'abc123\trefs/tags/v1.0.0\nbbb999\trefs/tags/release-2026',
+      stderr: ''
+    });
+    (provider as any)._gitRunner = { cwd: '/repo', run };
+
+    await provider.resolveWebviewView(webviewView, {} as any, {} as any);
+    await getReceiver()!({ type: 'tags/remoteList', requestId: 'tr1', payload: { remote: 'origin' } });
+
+    expect(run).toHaveBeenCalledWith(['ls-remote', '--tags', '--refs', 'origin'], 60000);
+    expect(posted[posted.length - 1]).toEqual({
+      type: 'ok',
+      requestId: 'tr1',
+      data: ['v1.0.0', 'release-2026']
+    });
+  });
+
   it('cancels pull when _ensureClean rejects operation', async () => {
     const { provider, posted, webviewView, getReceiver } = setupHarness();
     const run = vi.fn();
