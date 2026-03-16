@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.4
+
+- Branch filter: default selection now uses `HEAD` instead of `ALL BRANCHES` for clearer per-branch context.
+- Search: commit search now fuzzy-matches tag refs (e.g. `v123` matches `v1.2.3`).
+- Tag sync: reload/fetch refreshes remote tag metadata so rewritten/force-pushed tag state is reflected immediately.
+- Tag badges: local-only tags now render in a muted yellow, while origin tags keep the bright highlight.
+
 ## 0.4.3
 
 - Search box: placeholder simplified to "Search".
