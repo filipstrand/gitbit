@@ -1,3 +1,5 @@
+
+
 # GitBit
 
 <p align="center">
@@ -62,7 +64,7 @@ If you want to build the extension yourself:
 
 1. Clone the repository.
 2. Run `npm install`.
-3. Run `npm run package` to compile the source and bundle the webview.
+3. Run `npm run package` to compile the source, bundle the webview, and prepare Codicon assets.
 4. Run `npx @vscode/vsce package` to generate the `.vsix` file.
 
 ### Contributing
